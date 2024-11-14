@@ -1,0 +1,42 @@
+name: coworker-platform
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile.dev
+    ports:
+      - "3456:3456"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://backend:3457
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    command: npm run dev -- --host --port 3456
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: ../docker/backend/Dockerfile.dev
+    ports:
+      - "3457:3457"
+    volumes:
+      - ./server:/app/server
+      - /app/server/node_modules
+      - ./shared:/app/shared
+    environment:
+      - PORT=3457
+      - NODE_ENV=development
+      - CLIENT_URL=http://frontend:3456
+      - CORS_ORIGINS=http://localhost:3456
+    networks:
+      - app-network
+    command: npm run dev
+
+networks:
+  app-network:
+    driver: bridge

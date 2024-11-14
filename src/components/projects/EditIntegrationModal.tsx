@@ -1,134 +1,76 @@
-import { Fragment, useState, useEffect } from 'react'
-import { Dialog, Transition } from '@headlessui/react'
-import { useDispatch } from 'react-redux'
-import { updateProject } from '@/store/slices/projectsSlice'
-import { Project, ProjectIntegration } from '@/types'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { Fragment, useState } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
+import { useDispatch } from 'react-redux';
+import { updateProject } from '@/store/slices/projectsSlice';
+import { Project, ProjectIntegration } from '@/types';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface EditIntegrationModalProps {
-  isOpen: boolean
-  onClose: () => void
-  project: Project
-  integration: ProjectIntegration
+  isOpen: boolean;
+  onClose: () => void;
+  project: Project;
+  integration: ProjectIntegration;
 }
 
-function EditIntegrationModal({
-  isOpen,
-  onClose,
-  project,
-  integration
-}: EditIntegrationModalProps) {
-  const dispatch = useDispatch()
+function EditIntegrationModal({ isOpen, onClose, project, integration }: EditIntegrationModalProps) {
+  const dispatch = useDispatch();
   const [formData, setFormData] = useState({
-    name: '',
-    type: '',
-    status: '',
+    name: integration.name,
+    type: integration.type,
+    status: integration.status,
     config: {
-      repository: '',
-      branch: '',
-      channel: '',
-      webhook: ''
+      ...integration.config,
+      apiKey: integration.config.apiKey || '',
+      url: integration.config.url || '',
+      token: integration.config.token || ''
     }
-  })
+  });
 
-  useEffect(() => {
-    if (integration) {
-      setFormData({
-        name: integration.name,
-        type: integration.type,
-        status: integration.status,
-        config: integration.config
-      })
-    }
-  }, [integration])
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    const updatedIntegration: ProjectIntegration = {
-      ...integration,
-      name: formData.name,
-      type: formData.type as ProjectIntegration['type'],
-      status: formData.status as 'active' | 'inactive' | 'error',
-      config: formData.config,
-      lastSync: new Date().toISOString()
-    }
+    try {
+      const updatedIntegration: ProjectIntegration = {
+        ...integration,
+        ...formData,
+        lastSync: new Date().toISOString()
+      };
 
-    const updatedProject = {
-      ...project,
-      integrations: project.integrations.map(i =>
+      const updatedIntegrations = project.integrations.map(i =>
         i.id === integration.id ? updatedIntegration : i
-      )
-    }
+      );
 
-    dispatch(updateProject(updatedProject))
-    onClose()
-  }
-
-  const renderConfigFields = () => {
-    switch (formData.type) {
-      case 'github':
-      case 'gitlab':
-        return (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Repository</label>
-              <input
-                type="text"
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                value={formData.config.repository}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  config: { ...formData.config, repository: e.target.value }
-                })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Branch</label>
-              <input
-                type="text"
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                value={formData.config.branch}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  config: { ...formData.config, branch: e.target.value }
-                })}
-              />
-            </div>
-          </>
-        )
-      case 'slack':
-        return (
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Channel</label>
-            <input
-              type="text"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-              value={formData.config.channel}
-              onChange={(e) => setFormData({
-                ...formData,
-                config: { ...formData.config, channel: e.target.value }
-              })}
-            />
-          </div>
-        )
-      default:
-        return (
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Webhook URL</label>
-            <input
-              type="text"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-              value={formData.config.webhook}
-              onChange={(e) => setFormData({
-                ...formData,
-                config: { ...formData.config, webhook: e.target.value }
-              })}
-            />
-          </div>
-        )
+      await dispatch(updateProject({
+        id: project.id,
+        data: {
+          ...project,
+          integrations: updatedIntegrations
+        }
+      })).unwrap();
+      onClose();
+    } catch (error) {
+      console.error('Failed to update integration:', error);
     }
-  }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    if (name.startsWith('config.')) {
+      const configKey = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        config: {
+          ...prev.config,
+          [configKey]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -146,7 +88,7 @@ function EditIntegrationModal({
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="flex min-h-full items-center justify-center p-4 text-center">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -156,38 +98,66 @@ function EditIntegrationModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
-                <div className="flex justify-between items-center mb-4">
-                  <Dialog.Title as="h3" className="text-lg font-medium text-gray-900">
-                    Edit Integration
-                  </Dialog.Title>
-                  <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-                    <XMarkIcon className="w-6 h-6" />
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Title
+                  as="h3"
+                  className="text-lg font-medium leading-6 text-gray-900 flex justify-between items-center"
+                >
+                  <span>Edit Integration</span>
+                  <button
+                    onClick={onClose}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
                   </button>
-                </div>
+                </Dialog.Title>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="integration-name" className="block text-sm font-medium text-gray-700">
                       Integration Name
                     </label>
                     <input
                       type="text"
+                      id="integration-name"
+                      name="name"
                       required
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={handleChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="integration-type" className="block text-sm font-medium text-gray-700">
+                      Integration Type
+                    </label>
+                    <select
+                      id="integration-type"
+                      name="type"
+                      value={formData.type}
+                      onChange={handleChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    >
+                      <option value="github">GitHub</option>
+                      <option value="gitlab">GitLab</option>
+                      <option value="jira">Jira</option>
+                      <option value="slack">Slack</option>
+                      <option value="aws">AWS</option>
+                      <option value="azure">Azure</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="integration-status" className="block text-sm font-medium text-gray-700">
                       Status
                     </label>
                     <select
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                      id="integration-status"
+                      name="status"
                       value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      onChange={handleChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
@@ -195,21 +165,66 @@ function EditIntegrationModal({
                     </select>
                   </div>
 
-                  {renderConfigFields()}
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-medium text-gray-900">Configuration</h4>
+
+                    <div>
+                      <label htmlFor="integration-apikey" className="block text-sm font-medium text-gray-700">
+                        API Key
+                      </label>
+                      <input
+                        type="password"
+                        id="integration-apikey"
+                        name="config.apiKey"
+                        value={formData.config.apiKey}
+                        onChange={handleChange}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="integration-url" className="block text-sm font-medium text-gray-700">
+                        URL
+                      </label>
+                      <input
+                        type="url"
+                        id="integration-url"
+                        name="config.url"
+                        value={formData.config.url}
+                        onChange={handleChange}
+                        placeholder="https://api.example.com"
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="integration-token" className="block text-sm font-medium text-gray-700">
+                        Access Token
+                      </label>
+                      <input
+                        type="password"
+                        id="integration-token"
+                        name="config.token"
+                        value={formData.config.token}
+                        onChange={handleChange}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      />
+                    </div>
+                  </div>
 
                   <div className="mt-6 flex justify-end space-x-3">
                     <button
                       type="button"
                       onClick={onClose}
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+                      className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     >
-                      Update Integration
+                      Save Changes
                     </button>
                   </div>
                 </form>
@@ -219,7 +234,7 @@ function EditIntegrationModal({
         </div>
       </Dialog>
     </Transition>
-  )
+  );
 }
 
-export default EditIntegrationModal
+export default EditIntegrationModal;

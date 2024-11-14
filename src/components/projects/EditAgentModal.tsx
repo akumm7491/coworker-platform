@@ -1,54 +1,65 @@
-import { Fragment, useState, useEffect } from 'react'
-import { Dialog, Transition } from '@headlessui/react'
-import { useDispatch } from 'react-redux'
-import { updateAgent } from '@/store/slices/agentsSlice'
-import { Agent } from '@/types'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { Fragment, useState, useEffect } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
+import { useDispatch } from 'react-redux';
+import { updateAgent } from '@/store/slices/agentsSlice';
+import { Agent } from '@/types';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface EditAgentModalProps {
-  isOpen: boolean
-  onClose: () => void
-  agent: Agent
+  isOpen: boolean;
+  onClose: () => void;
+  agent: Agent;
 }
 
 function EditAgentModal({ isOpen, onClose, agent }: EditAgentModalProps) {
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
   const [formData, setFormData] = useState({
-    name: '',
-    type: '',
+    id: agent.id,
+    name: agent.name,
+    type: agent.type,
     description: '',
-    capabilities: '',
-    learningRate: 1.0,
-    maxConcurrentTasks: 3
-  })
+    status: agent.status,
+    performance: agent.performance,
+    settings: {
+      maxConcurrentTasks: 3,
+      autoStart: true,
+      requireApproval: true
+    }
+  });
 
   useEffect(() => {
     setFormData({
+      id: agent.id,
       name: agent.name,
       type: agent.type,
-      description: agent.description || '',
-      capabilities: agent.capabilities?.join(', ') || '',
-      learningRate: agent.learningRate || 1.0,
-      maxConcurrentTasks: agent.maxConcurrentTasks || 3
-    })
-  }, [agent])
+      description: '',
+      status: agent.status,
+      performance: agent.performance,
+      settings: {
+        maxConcurrentTasks: 3,
+        autoStart: true,
+        requireApproval: true
+      }
+    });
+  }, [agent]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    const updatedAgent: Agent = {
-      ...agent,
-      name: formData.name,
-      type: formData.type as Agent['type'],
-      description: formData.description,
-      capabilities: formData.capabilities.split(',').map(cap => cap.trim()).filter(Boolean),
-      learningRate: formData.learningRate,
-      maxConcurrentTasks: formData.maxConcurrentTasks
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await dispatch(updateAgent({ id: agent.id, data: formData })).unwrap();
+      onClose();
+    } catch (error) {
+      console.error('Failed to update agent:', error);
     }
+  };
 
-    dispatch(updateAgent(updatedAgent))
-    onClose()
-  }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+    }));
+  };
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -66,7 +77,7 @@ function EditAgentModal({ isOpen, onClose, agent }: EditAgentModalProps) {
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="flex min-h-full items-center justify-center p-4 text-center">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -76,100 +87,115 @@ function EditAgentModal({ isOpen, onClose, agent }: EditAgentModalProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
-                <div className="flex justify-between items-center mb-4">
-                  <Dialog.Title as="h3" className="text-lg font-medium text-gray-900">
-                    Edit Agent: {agent.name}
-                  </Dialog.Title>
-                  <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-                    <XMarkIcon className="w-6 h-6" />
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Title
+                  as="h3"
+                  className="text-lg font-medium leading-6 text-gray-900 flex justify-between items-center"
+                >
+                  <span>Edit Agent</span>
+                  <button
+                    onClick={onClose}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
                   </button>
-                </div>
+                </Dialog.Title>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Agent Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Agent Type
-                    </label>
-                    <select
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                      value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    >
-                      <option value="director">Director</option>
-                      <option value="architect">Architect</option>
-                      <option value="developer">Developer</option>
-                      <option value="qa">QA</option>
-                      <option value="devops">DevOps</option>
-                      <option value="analytics">Analytics</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Description
-                    </label>
-                    <textarea
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                      rows={3}
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Capabilities (comma-separated)
-                    </label>
-                    <input
-                      type="text"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                      value={formData.capabilities}
-                      onChange={(e) => setFormData({ ...formData, capabilities: e.target.value })}
-                      placeholder="e.g., code-review, testing, deployment"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                <form onSubmit={handleSubmit} className="mt-4">
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Learning Rate
+                      <label htmlFor="agent-name" className="block text-sm font-medium text-gray-700">
+                        Agent Name
                       </label>
                       <input
-                        type="number"
-                        step="0.1"
-                        min="0.1"
-                        max="2.0"
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                        value={formData.learningRate}
-                        onChange={(e) => setFormData({ ...formData, learningRate: parseFloat(e.target.value) })}
+                        type="text"
+                        id="agent-name"
+                        name="name"
+                        required
+                        value={formData.name}
+                        onChange={handleChange}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       />
                     </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="agent-type" className="block text-sm font-medium text-gray-700">
+                        Agent Type
+                      </label>
+                      <select
+                        id="agent-type"
+                        name="type"
+                        value={formData.type}
+                        onChange={handleChange}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      >
+                        <option value="director">Director</option>
+                        <option value="architect">Architect</option>
+                        <option value="developer">Developer</option>
+                        <option value="qa">QA</option>
+                        <option value="devops">DevOps</option>
+                        <option value="analytics">Analytics</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label htmlFor="agent-description" className="block text-sm font-medium text-gray-700">
+                        Description
+                      </label>
+                      <textarea
+                        id="agent-description"
+                        name="description"
+                        value={formData.description}
+                        onChange={handleChange}
+                        rows={3}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="max-tasks" className="block text-sm font-medium text-gray-700">
                         Max Concurrent Tasks
                       </label>
                       <input
                         type="number"
+                        id="max-tasks"
+                        name="settings.maxConcurrentTasks"
                         min="1"
                         max="10"
-                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                        value={formData.maxConcurrentTasks}
-                        onChange={(e) => setFormData({ ...formData, maxConcurrentTasks: parseInt(e.target.value) })}
+                        value={formData.settings.maxConcurrentTasks}
+                        onChange={handleChange}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="auto-start"
+                          name="settings.autoStart"
+                          checked={formData.settings.autoStart}
+                          onChange={handleChange}
+                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label htmlFor="auto-start" className="ml-2 block text-sm text-gray-700">
+                          Auto-start tasks
+                        </label>
+                      </div>
+
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="require-approval"
+                          name="settings.requireApproval"
+                          checked={formData.settings.requireApproval}
+                          onChange={handleChange}
+                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <label htmlFor="require-approval" className="ml-2 block text-sm text-gray-700">
+                          Require approval for actions
+                        </label>
+                      </div>
                     </div>
                   </div>
 
@@ -177,15 +203,15 @@ function EditAgentModal({ isOpen, onClose, agent }: EditAgentModalProps) {
                     <button
                       type="button"
                       onClick={onClose}
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+                      className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     >
-                      Update Agent
+                      Save Changes
                     </button>
                   </div>
                 </form>
@@ -195,7 +221,7 @@ function EditAgentModal({ isOpen, onClose, agent }: EditAgentModalProps) {
         </div>
       </Dialog>
     </Transition>
-  )
+  );
 }
 
-export default EditAgentModal
+export default EditAgentModal;

@@ -1,56 +1,36 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-import { Project } from '@/types'
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { Project } from '@/types';
 
 interface ProjectsState {
-  projects: Project[]
-  loading: boolean
-  error: string | null
+  projects: Project[];
+  loading: boolean;
+  error: string | null;
 }
 
 const initialState: ProjectsState = {
-  projects: [
+  projects: [],
+  loading: false,
+  error: null
+};
+
+// Simulated API call - replace with actual API call
+const fetchProjectsApi = async (): Promise<Project[]> => {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  return [
     {
       id: '1',
       name: 'Project Alpha',
-      description: 'AI-driven automation system',
+      description: 'AI-powered code review and optimization system',
       status: 'active',
-      agents: ['1', '2'],
-      tasks: [
-        {
-          id: 't1',
-          title: 'Setup Infrastructure',
-          description: 'Initialize cloud resources and configure basic services',
-          status: 'completed',
-          priority: 'high',
-          assignedTo: '1',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          tags: ['infrastructure', 'setup'],
-          dependencies: [],
-          progress: 100
-        },
-        {
-          id: 't2',
-          title: 'Implement Authentication',
-          description: 'Set up user authentication and authorization system',
-          status: 'in_progress',
-          priority: 'high',
-          assignedTo: '2',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-          tags: ['security', 'auth'],
-          dependencies: ['t1'],
-          progress: 60
-        }
-      ],
+      agents: ['agent1', 'agent2'],
+      tasks: [],
       integrations: [],
       environments: [],
       metrics: {
         completionRate: 75,
-        taskSuccessRate: 90,
-        timeEfficiency: 85,
+        taskSuccessRate: 85,
+        timeEfficiency: 90,
         resourceUtilization: 80
       },
       settings: {
@@ -58,47 +38,107 @@ const initialState: ProjectsState = {
         requireReview: true,
         notifyOnChange: true
       }
+    },
+    {
+      id: '2',
+      name: 'Project Beta',
+      description: 'Autonomous testing and deployment pipeline',
+      status: 'active',
+      agents: ['agent3'],
+      tasks: [],
+      integrations: [],
+      environments: [],
+      metrics: {
+        completionRate: 60,
+        taskSuccessRate: 75,
+        timeEfficiency: 85,
+        resourceUtilization: 70
+      },
+      settings: {
+        autoAssign: true,
+        requireReview: true,
+        notifyOnChange: true
+      }
     }
-  ],
-  loading: false,
-  error: null
-}
+  ];
+};
+
+export const fetchProjects = createAsyncThunk(
+  'projects/fetchProjects',
+  async () => {
+    const response = await fetchProjectsApi();
+    return response;
+  }
+);
+
+export const createProject = createAsyncThunk(
+  'projects/createProject',
+  async (project: Partial<Project>) => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const newProject: Project = {
+      id: `project_${Date.now()}`,
+      name: project.name || '',
+      description: project.description || '',
+      status: 'active',
+      agents: [],
+      tasks: [],
+      integrations: [],
+      environments: [],
+      metrics: {
+        completionRate: 0,
+        taskSuccessRate: 0,
+        timeEfficiency: 0,
+        resourceUtilization: 0
+      },
+      settings: {
+        autoAssign: project.settings?.autoAssign ?? false,
+        requireReview: project.settings?.requireReview ?? true,
+        notifyOnChange: project.settings?.notifyOnChange ?? true
+      }
+    };
+    
+    return newProject;
+  }
+);
+
+export const updateProject = createAsyncThunk(
+  'projects/updateProject',
+  async ({ id, data }: { id: string; data: Partial<Project> }) => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return { id, data };
+  }
+);
 
 const projectsSlice = createSlice({
   name: 'projects',
   initialState,
-  reducers: {
-    setProjects: (state, action: PayloadAction<Project[]>) => {
-      state.projects = action.payload
-    },
-    addProject: (state, action: PayloadAction<Project>) => {
-      state.projects.push(action.payload)
-    },
-    updateProject: (state, action: PayloadAction<Project>) => {
-      const index = state.projects.findIndex(p => p.id === action.payload.id)
-      if (index !== -1) {
-        state.projects[index] = action.payload
-      }
-    },
-    removeProject: (state, action: PayloadAction<string>) => {
-      state.projects = state.projects.filter(p => p.id !== action.payload)
-    },
-    setLoading: (state, action: PayloadAction<boolean>) => {
-      state.loading = action.payload
-    },
-    setError: (state, action: PayloadAction<string | null>) => {
-      state.error = action.payload
-    }
+  reducers: {},
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchProjects.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchProjects.fulfilled, (state, action) => {
+        state.loading = false;
+        state.projects = action.payload;
+      })
+      .addCase(fetchProjects.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch projects';
+      })
+      .addCase(createProject.fulfilled, (state, action) => {
+        state.projects.push(action.payload);
+      })
+      .addCase(updateProject.fulfilled, (state, action) => {
+        const { id, data } = action.payload;
+        const index = state.projects.findIndex(p => p.id === id);
+        if (index !== -1) {
+          state.projects[index] = { ...state.projects[index], ...data };
+        }
+      });
   }
-})
+});
 
-export const {
-  setProjects,
-  addProject,
-  updateProject,
-  removeProject,
-  setLoading,
-  setError
-} = projectsSlice.actions
-
-export default projectsSlice.reducer
+export default projectsSlice.reducer;

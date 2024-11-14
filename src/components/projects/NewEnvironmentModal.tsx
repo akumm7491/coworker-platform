@@ -1,56 +1,59 @@
-import { Fragment, useState } from 'react'
-import { Dialog, Transition } from '@headlessui/react'
-import { useDispatch } from 'react-redux'
-import { updateProject } from '@/store/slices/projectsSlice'
-import { Project, ProjectEnvironment } from '@/types'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { Fragment, useState } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
+import { useDispatch } from 'react-redux';
+import { updateProject } from '@/store/slices/projectsSlice';
+import { Project, ProjectEnvironment } from '@/types';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface NewEnvironmentModalProps {
-  isOpen: boolean
-  onClose: () => void
-  project: Project
-  environmentToEdit?: ProjectEnvironment
+  isOpen: boolean;
+  onClose: () => void;
+  project: Project;
+  environmentToEdit?: ProjectEnvironment;
 }
 
 function NewEnvironmentModal({ isOpen, onClose, project, environmentToEdit }: NewEnvironmentModalProps) {
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
   const [formData, setFormData] = useState({
     name: environmentToEdit?.name || '',
     type: environmentToEdit?.type || 'development',
     url: environmentToEdit?.url || '',
     status: environmentToEdit?.status || 'active'
-  })
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    const environmentData: ProjectEnvironment = {
-      id: environmentToEdit?.id || `env-${Date.now()}`,
-      name: formData.name,
-      type: formData.type as 'development' | 'staging' | 'production',
-      status: formData.status as 'active' | 'inactive',
-      url: formData.url,
-      lastDeploy: environmentToEdit?.lastDeploy || null
-    }
+    const newEnvironment: ProjectEnvironment = {
+      id: environmentToEdit?.id || `env_${Date.now()}`,
+      ...formData
+    };
 
-    const updatedProject = {
-      ...project,
-      environments: environmentToEdit
-        ? project.environments.map(env => 
-            env.id === environmentToEdit.id ? environmentData : env
-          )
-        : [...project.environments, environmentData]
-    }
+    const updatedEnvironments = environmentToEdit
+      ? project.environments.map(env => env.id === environmentToEdit.id ? newEnvironment : env)
+      : [...project.environments, newEnvironment];
 
-    dispatch(updateProject(updatedProject))
-    onClose()
-    setFormData({
-      name: '',
-      type: 'development',
-      url: '',
-      status: 'active'
-    })
-  }
+    try {
+      await dispatch(updateProject({
+        id: project.id,
+        data: {
+          ...project,
+          environments: updatedEnvironments
+        }
+      })).unwrap();
+      onClose();
+    } catch (error) {
+      console.error('Failed to update environment:', error);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -68,7 +71,7 @@ function NewEnvironmentModal({ isOpen, onClose, project, environmentToEdit }: Ne
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4">
+          <div className="flex min-h-full items-center justify-center p-4 text-center">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -78,39 +81,47 @@ function NewEnvironmentModal({ isOpen, onClose, project, environmentToEdit }: Ne
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
-                <div className="flex justify-between items-center mb-4">
-                  <Dialog.Title as="h3" className="text-lg font-medium text-gray-900">
-                    {environmentToEdit ? 'Edit Environment' : 'Create New Environment'}
-                  </Dialog.Title>
-                  <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-                    <XMarkIcon className="w-6 h-6" />
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Title
+                  as="h3"
+                  className="text-lg font-medium leading-6 text-gray-900 flex justify-between items-center"
+                >
+                  <span>{environmentToEdit ? 'Edit Environment' : 'New Environment'}</span>
+                  <button
+                    onClick={onClose}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
                   </button>
-                </div>
+                </Dialog.Title>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="env-name" className="block text-sm font-medium text-gray-700">
                       Environment Name
                     </label>
                     <input
                       type="text"
+                      id="env-name"
+                      name="name"
                       required
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={handleChange}
                       placeholder="e.g., Development, Staging, Production"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="env-type" className="block text-sm font-medium text-gray-700">
                       Environment Type
                     </label>
                     <select
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      id="env-type"
+                      name="type"
                       value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                      onChange={handleChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     >
                       <option value="development">Development</option>
                       <option value="staging">Staging</option>
@@ -119,26 +130,30 @@ function NewEnvironmentModal({ isOpen, onClose, project, environmentToEdit }: Ne
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="env-url" className="block text-sm font-medium text-gray-700">
                       Environment URL
                     </label>
                     <input
                       type="url"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      id="env-url"
+                      name="url"
                       value={formData.url}
-                      onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                      onChange={handleChange}
                       placeholder="https://example.com"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="env-status" className="block text-sm font-medium text-gray-700">
                       Status
                     </label>
                     <select
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      id="env-status"
+                      name="status"
                       value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      onChange={handleChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
@@ -149,15 +164,15 @@ function NewEnvironmentModal({ isOpen, onClose, project, environmentToEdit }: Ne
                     <button
                       type="button"
                       onClick={onClose}
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+                      className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     >
-                      {environmentToEdit ? 'Update Environment' : 'Create Environment'}
+                      {environmentToEdit ? 'Save Changes' : 'Create Environment'}
                     </button>
                   </div>
                 </form>
@@ -167,7 +182,7 @@ function NewEnvironmentModal({ isOpen, onClose, project, environmentToEdit }: Ne
         </div>
       </Dialog>
     </Transition>
-  )
+  );
 }
 
-export default NewEnvironmentModal
+export default NewEnvironmentModal;
