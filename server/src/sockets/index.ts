@@ -1,5 +1,4 @@
 import { Server, Socket } from 'socket.io';
-import { WebSocketEvents } from '../../../shared/types';
 
 export const setupWebSocketHandlers = (io: Server) => {
   io.on('connection', (socket: Socket) => {

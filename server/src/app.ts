@@ -2,11 +2,16 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import { config } from './config/env';
-import { setupWebSocketHandlers } from './sockets';
-import agentRoutes from './routes/agents';
-import projectRoutes from './routes/projects';
-import { errorHandler } from './middleware/error';
+import { config } from './config/env.js';
+import { setupWebSocketHandlers } from './sockets.js';
+import authRoutes from './routes/auth.js';
+import { errorHandler } from './middleware/error.js';
+import { connectDB } from './config/database.js';
+import cookieParser from 'cookie-parser';
+import morgan from 'morgan';
+
+// Connect to MongoDB
+connectDB();
 
 const app = express();
 const httpServer = createServer(app);
@@ -19,20 +24,47 @@ const io = new Server(httpServer, {
 });
 
 // Middleware
+app.use(morgan('dev')); // Add request logging
+
 app.use(cors({
   origin: config.corsOrigins,
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
+app.use(cookieParser());
+
+// Debug middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+  next();
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Routes
-app.use('/api/agents', agentRoutes);
-app.use('/api/projects', projectRoutes);
+app.use('/api/auth', authRoutes);
 
 // WebSocket setup
 setupWebSocketHandlers(io);
 
 // Error handling
 app.use(errorHandler);
+
+// 404 handler
+app.use((req, res) => {
+  console.log(`404 Not Found: ${req.method} ${req.url}`);
+  res.status(404).json({
+    status: 'error',
+    message: 'Not found'
+  });
+});
 
 export { app, httpServer, io };

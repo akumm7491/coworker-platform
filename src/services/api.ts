@@ -1,71 +1,187 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { Agent, Project, ProjectTask } from '@/types';
-
-const API_URL = process.env.VITE_API_URL || 'http://localhost:3457';
 
 // Configure axios
 const api = axios.create({
-  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true // Enable sending cookies
 });
 
-// Add request interceptor for authentication
+// Add request interceptor for authentication and debugging
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Log the request for debugging
+  console.log('Request:', {
+    method: config.method,
+    url: config.url,
+    headers: config.headers,
+    data: config.data
+  });
+  
   return config;
 });
 
+// Authentication
+export interface AuthResponse {
+  success: boolean;
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export interface RegisterData {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface LoginData {
+  email: string;
+  password: string;
+}
+
+export const register = async (data: RegisterData): Promise<AuthResponse> => {
+  try {
+    const response = await api.post<AuthResponse>('/api/auth/register', data);
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+    }
+    return response.data;
+  } catch (error) {
+    const axiosError = error as AxiosError<{ error: string }>;
+    if (axiosError.response?.data?.error) {
+      throw new Error(axiosError.response.data.error);
+    }
+    throw new Error('Failed to register. Please try again.');
+  }
+};
+
+export const login = async (data: LoginData): Promise<AuthResponse> => {
+  try {
+    const response = await api.post<AuthResponse>('/api/auth/login', data);
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+    }
+    return response.data;
+  } catch (error) {
+    const axiosError = error as AxiosError<{ error: string }>;
+    if (axiosError.response?.data?.error) {
+      throw new Error(axiosError.response.data.error);
+    }
+    throw new Error('Invalid email or password');
+  }
+};
+
+export const logout = async (): Promise<void> => {
+  localStorage.removeItem('token');
+  await api.post('/api/auth/logout');
+};
+
+export const getCurrentUser = async () => {
+  const response = await api.get('/api/auth/me');
+  return response.data;
+};
+
 // Agents
-export const getAgents = () => api.get<Agent[]>('/api/agents');
-export const createAgent = (data: Partial<Agent>) => api.post<Agent>('/api/agents', data);
-export const updateAgent = (id: string, data: Partial<Agent>) => api.put<Agent>(`/api/agents/${id}`, data);
-export const deleteAgent = (id: string) => api.delete(`/api/agents/${id}`);
+export const getAgents = async () => {
+  const response = await api.get('/api/agents');
+  return response.data;
+};
+
+export const createAgent = async (data: Partial<Agent>) => {
+  const response = await api.post('/api/agents', data);
+  return response.data;
+};
+
+export const updateAgent = async (id: string, data: Partial<Agent>) => {
+  const response = await api.put(`/api/agents/${id}`, data);
+  return response.data;
+};
+
+export const deleteAgent = async (id: string) => {
+  const response = await api.delete(`/api/agents/${id}`);
+  return response.data;
+};
 
 // Projects
-export const getProjects = () => api.get<Project[]>('/api/projects');
-export const createProject = (data: Partial<Project>) => api.post<Project>('/api/projects', data);
-export const updateProject = (id: string, data: Partial<Project>) => api.put<Project>(`/api/projects/${id}`, data);
-export const deleteProject = (id: string) => api.delete(`/api/projects/${id}`);
+export const getProjects = async () => {
+  const response = await api.get('/api/projects');
+  return response.data;
+};
+
+export const createProject = async (data: Partial<Project>) => {
+  const response = await api.post('/api/projects', data);
+  return response.data;
+};
+
+export const updateProject = async (id: string, data: Partial<Project>) => {
+  const response = await api.put(`/api/projects/${id}`, data);
+  return response.data;
+};
+
+export const deleteProject = async (id: string) => {
+  const response = await api.delete(`/api/projects/${id}`);
+  return response.data;
+};
 
 // Tasks
-export const getTasks = (projectId: string) => api.get<ProjectTask[]>(`/api/projects/${projectId}/tasks`);
-export const createTask = (projectId: string, data: Partial<ProjectTask>) => 
-  api.post<ProjectTask>(`/api/projects/${projectId}/tasks`, data);
-export const updateTask = (projectId: string, taskId: string, data: Partial<ProjectTask>) =>
-  api.put<ProjectTask>(`/api/projects/${projectId}/tasks/${taskId}`, data);
-export const deleteTask = (projectId: string, taskId: string) =>
-  api.delete(`/api/projects/${projectId}/tasks/${taskId}`);
+export const getTasks = async (projectId: string) => {
+  const response = await api.get(`/api/projects/${projectId}/tasks`);
+  return response.data;
+};
+
+export const createTask = async (projectId: string, data: Partial<ProjectTask>) => {
+  const response = await api.post(`/api/projects/${projectId}/tasks`, data);
+  return response.data;
+};
+
+export const updateTask = async (projectId: string, taskId: string, data: Partial<ProjectTask>) => {
+  const response = await api.put(`/api/projects/${projectId}/tasks/${taskId}`, data);
+  return response.data;
+};
+
+export const deleteTask = async (projectId: string, taskId: string) => {
+  const response = await api.delete(`/api/projects/${projectId}/tasks/${taskId}`);
+  return response.data;
+};
 
 // Error handler
 api.interceptors.response.use(
-  response => response,
+  response => {
+    // Log successful response for debugging
+    console.log('Response:', {
+      status: response.status,
+      data: response.data,
+      headers: response.headers
+    });
+    return response;
+  },
   error => {
-    if (error.response) {
-      // Handle specific error cases
-      switch (error.response.status) {
-        case 401:
-          // Handle unauthorized
-          localStorage.removeItem('token');
-          window.location.href = '/';
-          break;
-        case 403:
-          // Handle forbidden
-          break;
-        case 404:
-          // Handle not found
-          break;
-        case 500:
-          // Handle server error
-          break;
-      }
+    // Log error response for debugging
+    console.log('API Error:', error);
+    console.log('Error Config:', error.config);
+    console.log('Error Response:', error.response);
+    
+    if (error.response?.data?.error) {
+      console.log('Server error:', error.response.data.error);
     }
+    
+    // Handle unauthorized errors
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      // Don't redirect, let the component handle the error
+    }
+    
     return Promise.reject(error);
   }
 );
-
-export default api;

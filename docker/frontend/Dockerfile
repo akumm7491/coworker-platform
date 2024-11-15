@@ -20,16 +20,14 @@ COPY index.html ./
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine
+FROM nginx:alpine
 
-WORKDIR /app
-
-# Install serve to run the application
-RUN npm install -g serve
+# Copy nginx configuration
+COPY docker/frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built assets from builder stage
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-EXPOSE 5175
+EXPOSE 80
 
-CMD ["serve", "-s", "dist", "-l", "5175"]
+CMD ["nginx", "-g", "daemon off;"]

@@ -6,11 +6,7 @@ docker compose -f docker-compose.dev.yml down
 
 # Remove any existing node_modules volumes
 echo "Cleaning up volumes..."
-docker volume rm $(docker volume ls -q | grep "coworker-platform_node_modules") 2>/dev/null || true
-
-# Prepare backend build context
-echo "Preparing backend build context..."
-./docker/prepare-backend.sh
+docker volume rm coworker-platform_frontend_node_modules coworker-platform_backend_node_modules 2>/dev/null || true
 
 # Build and start containers
 echo "Building and starting containers..."

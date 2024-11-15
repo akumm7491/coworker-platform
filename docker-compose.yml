@@ -7,13 +7,16 @@ services:
       dockerfile: docker/frontend/Dockerfile
     ports:
       - "3456:80"
+    environment:
+      - VITE_API_URL=http://localhost:3457
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:3457"]
+      test: ["CMD", "wget", "--spider", "http://localhost:80"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -26,18 +29,46 @@ services:
       - "3457:3457"
     environment:
       - PORT=3457
-      - NODE_ENV=production
-      - CLIENT_URL=http://frontend:3456
+      - NODE_ENV=development
+      - CLIENT_URL=http://localhost:3456
       - CORS_ORIGINS=http://localhost:3456
+      - DATABASE_URL=mongodb://mongodb:27017/coworker-platform
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_EXPIRES_IN=30d
+      - NODE_OPTIONS=--experimental-specifier-resolution=node --es-module-specifier-resolution=node
+    depends_on:
+      mongodb:
+        condition: service_healthy
     networks:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:8000/api/health"]
+      test: ["CMD", "wget", "--spider", "http://localhost:3457/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
+
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+    restart: unless-stopped
+    command: ["mongod", "--bind_ip_all"]
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  mongodb_data:
