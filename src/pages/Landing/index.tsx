@@ -1,5 +1,5 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef } from 'react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import {
   SparklesIcon,
   BoltIcon,
@@ -8,68 +8,73 @@ import {
   LightBulbIcon,
   CircleStackIcon,
   ShieldCheckIcon,
-  CogIcon,
 } from '@heroicons/react/24/outline';
 import { useDispatch } from 'react-redux';
 import { loginSuccess } from '@/store/slices/authSlice';
+import { ParticleBackground } from '@/components/ui/ParticleBackground';
 import { FeatureCard } from '@/components/ui/FeatureCard';
+import { TypedText } from '@/components/ui/TypedText';
+import { InteractiveDemo } from '@/components/sections/InteractiveDemo';
+import { SocialProof } from '@/components/sections/SocialProof';
+import { CallToAction } from '@/components/sections/CallToAction';
 
 const features = [
   {
     icon: SparklesIcon,
     title: 'AI-Powered Automation',
     description: 'Intelligent agents that learn and adapt to your development workflow, making decisions in real-time.',
-    color: 'bg-blue-500'
+    color: 'from-[#2563eb] to-[#7c3aed]'
   },
   {
     icon: BoltIcon,
     title: 'Real-time Collaboration',
     description: 'Seamless coordination between human developers and AI agents for maximum efficiency.',
-    color: 'bg-indigo-500'
+    color: 'from-[#7c3aed] to-[#06b6d4]'
   },
   {
     icon: BeakerIcon,
     title: 'Smart Testing',
     description: 'Automated test generation and execution with AI-driven coverage optimization.',
-    color: 'bg-purple-500'
+    color: 'from-[#06b6d4] to-[#2563eb]'
   },
   {
     icon: RocketLaunchIcon,
     title: 'Automated Deployment',
     description: 'One-click deployments with built-in safety checks and rollback capabilities.',
-    color: 'bg-pink-500'
+    color: 'from-[#2563eb] to-[#7c3aed]'
   },
   {
     icon: LightBulbIcon,
     title: 'Intelligent Insights',
     description: 'Real-time analytics and AI-powered recommendations for code optimization.',
-    color: 'bg-yellow-500'
+    color: 'from-[#7c3aed] to-[#06b6d4]'
   },
   {
     icon: CircleStackIcon,
     title: 'Scalable Infrastructure',
     description: 'Cloud-native architecture that automatically scales with your needs.',
-    color: 'bg-green-500'
+    color: 'from-[#06b6d4] to-[#2563eb]'
   },
   {
     icon: ShieldCheckIcon,
     title: 'Enterprise Security',
     description: 'Bank-grade security with end-to-end encryption and advanced access controls.',
-    color: 'bg-red-500'
-  },
-  {
-    icon: CogIcon,
-    title: 'Custom Workflows',
-    description: 'Fully customizable automation pipelines tailored to your specific requirements.',
-    color: 'bg-teal-500'
+    color: 'from-[#2563eb] to-[#7c3aed]'
   }
 ];
 
-const Landing: React.FC = () => {
+const Landing = () => {
   const dispatch = useDispatch();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"]
+  });
+
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
 
   const handleLogin = () => {
-    // Simulate login for now
     dispatch(loginSuccess({
       id: '1',
       email: 'user@example.com',
@@ -78,43 +83,69 @@ const Landing: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <div ref={containerRef} className="min-h-screen bg-[#0f172a] font-['Inter'] text-[#f8fafc] relative overflow-hidden">
+      <ParticleBackground />
+      
       {/* Hero Section */}
-      <div className="container mx-auto px-4 pt-20 pb-16">
-        <div className="text-center max-w-4xl mx-auto">
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-5xl sm:text-6xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"
-          >
-            Coworker Platform
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-xl text-gray-600 mb-12"
-          >
-            Transform your development workflow with AI-powered automation
-          </motion.p>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <button
-              onClick={handleLogin}
-              className="px-8 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors duration-300"
+      <div className="relative min-h-screen flex items-center">
+        <motion.div 
+          style={{ y, opacity }}
+          className="container mx-auto px-4 pt-32 pb-24 relative"
+        >
+          <div className="text-center max-w-4xl mx-auto relative z-10">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8"
             >
-              Get Started
-            </button>
-          </motion.div>
-        </div>
+              <h1 className="font-['Space_Grotesk'] text-6xl sm:text-7xl font-bold mb-6">
+                <span className="bg-gradient-to-r from-[#2563eb] via-[#7c3aed] to-[#06b6d4] bg-clip-text text-transparent inline-block">
+                  <div className="mb-2 leading-tight">The Future of Software Development is</div>
+                  <div className="flex items-center justify-center min-h-[1.2em]">
+                    <TypedText 
+                      words={[
+                        'Autonomous',
+                        'Intelligent',
+                        'Limiteless',
+                        'Revolutionary',
+                        'Magical'
+                      ]}
+                      typingSpeed={100}
+                      deletingSpeed={50}
+                      delayBetweenWords={2000}
+                      className="min-w-[300px] px-1"
+                    />
+                  </div>
+                </span>
+              </h1>
+              <p className="text-2xl text-gray-300 mb-8">
+                AI Agents that learn, collaborate, and build together
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex justify-center gap-6"
+            >
+              <button
+                onClick={handleLogin}
+                className="px-8 py-4 bg-gradient-to-r from-[#2563eb] to-[#7c3aed] rounded-lg font-semibold text-lg hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-[#7c3aed]/20"
+              >
+                Get Started Free
+              </button>
+              <button className="px-8 py-4 border-2 border-[#7c3aed] rounded-lg font-semibold text-lg hover:bg-[#7c3aed]/10 transition-all duration-300">
+                Watch Demo
+              </button>
+            </motion.div>
+          </div>
+        </motion.div>
       </div>
 
       {/* Features Section */}
-      <div className="py-24 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
-        <div className="absolute inset-0 dot-pattern opacity-30" />
+      <div className="py-24 relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0f172a] via-[#1e293b] to-[#0f172a] opacity-50" />
         <div className="container mx-auto px-4 relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -122,47 +153,39 @@ const Landing: React.FC = () => {
             viewport={{ once: true }}
             className="text-center max-w-3xl mx-auto mb-20"
           >
-            <span className="inline-block px-4 py-1 bg-indigo-50 rounded-full text-indigo-600 font-medium mb-4">
-              Features
-            </span>
-            <h2 className="text-4xl sm:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
+            <h2 className="font-['Space_Grotesk'] text-4xl sm:text-5xl font-bold mb-6 bg-gradient-to-r from-[#2563eb] via-[#7c3aed] to-[#06b6d4] bg-clip-text text-transparent">
               Everything You Need
             </h2>
-            <p className="text-xl text-gray-600">
-              A complete suite of AI-powered development tools designed to transform your workflow and boost productivity
+            <p className="text-xl text-gray-300">
+              A complete suite of AI-powered development tools designed to transform your workflow
             </p>
           </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5 rounded-3xl -m-4 blur-3xl" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#2563eb]/5 via-[#7c3aed]/5 to-[#06b6d4]/5 rounded-3xl -m-4 blur-3xl" />
             {features.map((feature, index) => (
-              <FeatureCard
-                key={index}
-                {...feature}
-                delay={index * 0.1}
-              />
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <FeatureCard {...feature} />
+              </motion.div>
             ))}
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.4 }}
-            className="mt-16 text-center"
-          >
-            <button
-              onClick={handleLogin}
-              className="inline-flex items-center space-x-2 text-indigo-600 font-medium hover:text-indigo-700 transition-colors duration-300"
-            >
-              <span>Get Started Now</span>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </button>
-          </motion.div>
         </div>
       </div>
+
+      {/* Interactive Demo Section */}
+      <InteractiveDemo />
+
+      {/* Social Proof Section */}
+      <SocialProof />
+
+      {/* Call to Action Section */}
+      <CallToAction />
     </div>
   );
 };

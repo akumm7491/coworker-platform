@@ -1,5 +1,6 @@
-import { Project } from '@/types'
-import { Card } from '@/components/ui/Card'
+import { Project } from '@/types';
+import { Card } from '@/components/ui';
+import { PieChartCard } from '@/components/charts/PieChartCard';
 import {
   LineChart,
   Line,
@@ -7,124 +8,83 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts'
+  ResponsiveContainer
+} from 'recharts';
+import {
+  ChartBarIcon,
+  CpuChipIcon
+} from '@heroicons/react/24/outline';
 
 interface ProjectMetricsProps {
-  project: Project
+  project: Project;
 }
 
 function ProjectMetrics({ project }: ProjectMetricsProps) {
-  // Sample data - replace with real metrics
-  const performanceData = [
-    { name: 'Week 1', value: 85 },
-    { name: 'Week 2', value: 88 },
-    { name: 'Week 3', value: 92 },
-    { name: 'Week 4', value: 90 },
-    { name: 'Week 5', value: 95 },
-  ]
+  const progressData = [
+    { name: 'Week 1', progress: 20 },
+    { name: 'Week 2', progress: 45 },
+    { name: 'Week 3', progress: 65 },
+    { name: 'Week 4', progress: 85 },
+    { name: 'Week 5', progress: 92 }
+  ];
 
   const taskDistribution = [
-    { name: 'Pending', value: 30, color: '#FCD34D' },
-    { name: 'In Progress', value: 45, color: '#60A5FA' },
-    { name: 'Completed', value: 25, color: '#34D399' },
-  ]
+    { name: 'Completed', value: 45, color: '#818CF8' },
+    { name: 'In Progress', value: 35, color: '#34D399' },
+    { name: 'Pending', value: 20, color: '#F472B6' }
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4">
-          <h4 className="text-sm font-medium text-gray-600">Completion Rate</h4>
-          <p className="text-2xl font-bold mt-2">{project.metrics.completionRate}%</p>
-          <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-blue-500 h-2 rounded-full"
-              style={{ width: `${project.metrics.completionRate}%` }}
-            />
-          </div>
-        </Card>
-        <Card className="p-4">
-          <h4 className="text-sm font-medium text-gray-600">Task Success Rate</h4>
-          <p className="text-2xl font-bold mt-2">{project.metrics.taskSuccessRate}%</p>
-          <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-green-500 h-2 rounded-full"
-              style={{ width: `${project.metrics.taskSuccessRate}%` }}
-            />
-          </div>
-        </Card>
-        <Card className="p-4">
-          <h4 className="text-sm font-medium text-gray-600">Resource Utilization</h4>
-          <p className="text-2xl font-bold mt-2">{project.metrics.resourceUtilization}%</p>
-          <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-purple-500 h-2 rounded-full"
-              style={{ width: `${project.metrics.resourceUtilization}%` }}
-            />
-          </div>
-        </Card>
-      </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <Card hover blur className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-gray-900">Project Progress</h3>
+          <ChartBarIcon className="w-6 h-6 text-indigo-600" />
+        </div>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={progressData}>
+              <defs>
+                <linearGradient id="colorProgress" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#818CF8" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="#818CF8" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                  backdropFilter: 'blur(8px)',
+                  borderRadius: '0.75rem',
+                  border: 'none',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="progress"
+                stroke="#818CF8"
+                strokeWidth={3}
+                name="Progress"
+                dot={{ strokeWidth: 2 }}
+                activeDot={{ r: 6, strokeWidth: 2 }}
+                fillOpacity={1}
+                fill="url(#colorProgress)"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h4 className="text-lg font-medium mb-4">Performance Trend</h4>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#6366f1"
-                  strokeWidth={2}
-                  dot={{ strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <h4 className="text-lg font-medium mb-4">Task Distribution</h4>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={taskDistribution}
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {taskDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex justify-center space-x-6 mt-4">
-            {taskDistribution.map((entry) => (
-              <div key={entry.name} className="flex items-center space-x-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: entry.color }}
-                />
-                <span className="text-sm text-gray-600">{entry.name}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+      <PieChartCard
+        title="Task Distribution"
+        icon={<CpuChipIcon className="w-6 h-6 text-indigo-600" />}
+        data={taskDistribution}
+      />
     </div>
-  )
+  );
 }
 
-export default ProjectMetrics
+export default ProjectMetrics;

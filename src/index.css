@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer utilities {
+  @keyframes blink {
+    0%, 100% { border-color: transparent }
+    50% { border-color: #06b6d4 }
+  }
+
+  .animate-blink {
+    animation: blink 1s step-end infinite;
+  }
+}

@@ -1,7 +1,24 @@
-import { useSelector } from 'react-redux'
-import { RootState } from '@/store'
-import { Card } from '@/components/ui/Card'
-import { motion } from 'framer-motion'
+import { useState } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import {
+  Card,
+  PageContainer,
+  PageHeader,
+  EmptyState,
+  Button
+} from '@/components/ui';
+import { PieChartCard } from '@/components/charts/PieChartCard';
+import { motion } from 'framer-motion';
+import {
+  ChartBarIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  BeakerIcon,
+  ArrowTrendingUpIcon,
+  CpuChipIcon,
+  RocketLaunchIcon
+} from '@heroicons/react/24/outline';
 import {
   LineChart,
   Line,
@@ -9,175 +26,229 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts'
-import {
-  UserGroupIcon,
-  FolderIcon,
-  CheckCircleIcon,
-  ChartBarIcon,
-  ClockIcon,
-  BoltIcon,
-  ExclamationTriangleIcon
-} from '@heroicons/react/24/outline'
+  ResponsiveContainer
+} from 'recharts';
 
 function Dashboard() {
-  const { agents = [] } = useSelector((state: RootState) => state.agents ?? { agents: [] })
-  const { projects = [] } = useSelector((state: RootState) => state.projects ?? { projects: [] })
-
-  const activeAgents = agents.filter(agent => agent.status === 'working')
-  const completedTasks = projects.reduce(
-    (acc, project) => acc + project.tasks.filter(task => task.status === 'completed').length,
-    0
-  )
-
-  const stats = [
-    {
-      title: 'Active Agents',
-      value: activeAgents.length,
-      total: agents.length,
-      icon: UserGroupIcon,
-      color: 'bg-blue-500'
-    },
-    {
-      title: 'Active Projects',
-      value: projects.filter(p => p.status === 'active').length,
-      total: projects.length,
-      icon: FolderIcon,
-      color: 'bg-green-500'
-    },
-    {
-      title: 'Completed Tasks',
-      value: completedTasks,
-      total: projects.reduce((acc, project) => acc + project.tasks.length, 0),
-      icon: CheckCircleIcon,
-      color: 'bg-purple-500'
-    },
-    {
-      title: 'System Health',
-      value: '98%',
-      icon: BoltIcon,
-      color: 'bg-indigo-500'
-    }
-  ]
-
-  // Sample performance data
-  const performanceData = [
-    { name: 'Mon', tasks: 12, efficiency: 85 },
-    { name: 'Tue', tasks: 15, efficiency: 88 },
-    { name: 'Wed', tasks: 18, efficiency: 92 },
-    { name: 'Thu', tasks: 14, efficiency: 90 },
-    { name: 'Fri', tasks: 20, efficiency: 95 }
-  ]
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { agents = [] } = useSelector((state: RootState) => state.agents);
+  const { projects = [] } = useSelector((state: RootState) => state.projects);
 
   const taskDistribution = [
-    { name: 'Pending', value: 30, color: '#FCD34D' },
-    { name: 'In Progress', value: 45, color: '#60A5FA' },
-    { name: 'Completed', value: 25, color: '#34D399' }
-  ]
+    { name: 'Completed', value: 45, color: '#818CF8' },
+    { name: 'In Progress', value: 35, color: '#34D399' },
+    { name: 'Pending', value: 20, color: '#F472B6' }
+  ];
+
+  const performanceData = [
+    { name: 'Jan', tasks: 85, efficiency: 78 },
+    { name: 'Feb', tasks: 88, efficiency: 82 },
+    { name: 'Mar', tasks: 92, efficiency: 85 },
+    { name: 'Apr', tasks: 90, efficiency: 88 },
+    { name: 'May', tasks: 95, efficiency: 92 },
+  ];
+
+  if (isLoading) {
+    return (
+      <PageContainer>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <motion.div 
+            className="flex flex-col items-center space-y-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <motion.div
+              animate={{ 
+                rotate: 360,
+                transition: { duration: 2, repeat: Infinity, ease: "linear" }
+              }}
+              className="w-16 h-16 text-indigo-600"
+            >
+              <BeakerIcon className="w-full h-full" />
+            </motion.div>
+            <motion.p
+              animate={{ 
+                opacity: [1, 0.5, 1],
+                transition: { duration: 1.5, repeat: Infinity }
+              }}
+              className="text-indigo-600 font-medium"
+            >
+              Loading dashboard data...
+            </motion.p>
+          </motion.div>
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageContainer variant="error">
+        <EmptyState
+          icon={BeakerIcon}
+          title="Error Loading Dashboard"
+          description={error}
+          action={
+            <Button
+              variant="primary"
+              leftIcon={<ArrowTrendingUpIcon className="w-5 h-5" />}
+              onClick={() => setError(null)}
+            >
+              Try Again
+            </Button>
+          }
+        />
+      </PageContainer>
+    );
+  }
+
+  if (agents.length === 0 || projects.length === 0) {
+    return (
+      <PageContainer>
+        <PageHeader
+          title="Dashboard"
+          description="Monitor your autonomous agent platform performance"
+          icon={<ChartBarIcon className="w-8 h-8 text-indigo-600" />}
+        />
+        <EmptyState
+          icon={RocketLaunchIcon}
+          title="No Data Available"
+          description="Start by creating some agents and projects to see dashboard data."
+          action={
+            <Button
+              variant="primary"
+              leftIcon={<CpuChipIcon className="w-5 h-5" />}
+              onClick={() => {/* Navigate to agents/projects */}}
+            >
+              Get Started
+            </Button>
+          }
+        />
+      </PageContainer>
+    );
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <Card key={index} className="p-6 hover:shadow-lg transition-shadow duration-200">
-            <div className="flex items-center">
-              <div className={`p-3 rounded-lg ${stat.color}`}>
-                <stat.icon className="w-6 h-6 text-white" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                <div className="flex items-baseline">
-                  <p className="text-2xl font-semibold text-gray-900">{stat.value}</p>
-                  {stat.total && (
-                    <p className="ml-2 text-sm text-gray-500">of {stat.total}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Dashboard"
+        description="Monitor your autonomous agent platform performance"
+        icon={<ChartBarIcon className="w-8 h-8 text-indigo-600" />}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">System Performance</h3>
+        <Card hover blur className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-gray-900">System Performance</h3>
+            <ArrowTrendingUpIcon className="w-6 h-6 text-indigo-600" />
+          </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
+                <defs>
+                  <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#818CF8" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#818CF8" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorEfficiency" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#34D399" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#34D399" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(8px)',
+                    borderRadius: '0.75rem',
+                    border: 'none',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
                 <Line
                   type="monotone"
                   dataKey="tasks"
-                  stroke="#6366f1"
-                  strokeWidth={2}
-                  name="Tasks Completed"
+                  stroke="#818CF8"
+                  strokeWidth={3}
+                  name="Tasks"
+                  dot={{ strokeWidth: 2 }}
+                  activeDot={{ r: 6, strokeWidth: 2 }}
+                  fillOpacity={1}
+                  fill="url(#colorTasks)"
                 />
                 <Line
                   type="monotone"
                   dataKey="efficiency"
-                  stroke="#34d399"
-                  strokeWidth={2}
-                  name="Efficiency %"
+                  stroke="#34D399"
+                  strokeWidth={3}
+                  name="Efficiency"
+                  dot={{ strokeWidth: 2 }}
+                  activeDot={{ r: 6, strokeWidth: 2 }}
+                  fillOpacity={1}
+                  fill="url(#colorEfficiency)"
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
-        <Card className="p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Task Distribution</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={taskDistribution}
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {taskDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+        <PieChartCard
+          title="Task Distribution"
+          icon={<CpuChipIcon className="w-6 h-6 text-indigo-600" />}
+          data={taskDistribution}
+        />
       </div>
 
-      <Card className="p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
-        <div className="space-y-4">
-          {agents.slice(0, 4).map((agent) => (
-            <div key={agent.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
-              <div className={`w-2 h-2 rounded-full ${
-                agent.status === 'working' ? 'bg-green-500' : 'bg-gray-400'
-              }`} />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-900">{agent.name}</p>
-                <p className="text-sm text-gray-500">
-                  {agent.currentTask?.title || 'No active task'}
-                </p>
+      <Card hover blur className="p-6 mt-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-gray-900">Agent Performance Metrics</h3>
+          <RocketLaunchIcon className="w-6 h-6 text-indigo-600" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4"
+          >
+            <div className="flex items-center space-x-3">
+              <CheckCircleIcon className="w-8 h-8 text-indigo-600" />
+              <div>
+                <h4 className="text-sm font-medium text-indigo-900">Task Completion</h4>
+                <p className="text-2xl font-bold text-indigo-600">92%</p>
               </div>
             </div>
-          ))}
+          </motion.div>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-4"
+          >
+            <div className="flex items-center space-x-3">
+              <ClockIcon className="w-8 h-8 text-emerald-600" />
+              <div>
+                <h4 className="text-sm font-medium text-emerald-900">Response Time</h4>
+                <p className="text-2xl font-bold text-emerald-600">1.2s</p>
+              </div>
+            </div>
+          </motion.div>
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="bg-gradient-to-br from-rose-50 to-pink-50 rounded-xl p-4"
+          >
+            <div className="flex items-center space-x-3">
+              <ArrowTrendingUpIcon className="w-8 h-8 text-rose-600" />
+              <div>
+                <h4 className="text-sm font-medium text-rose-900">Success Rate</h4>
+                <p className="text-2xl font-bold text-rose-600">95%</p>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </Card>
-    </motion.div>
-  )
+    </PageContainer>
+  );
 }
 
-export default Dashboard
+export default Dashboard;

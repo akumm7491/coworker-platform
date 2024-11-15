@@ -5,6 +5,7 @@ import { RootState } from '@/store';
 import Dashboard from '@/pages/Dashboard';
 import Agents from '@/pages/Agents';
 import Projects from '@/pages/Projects';
+import ProjectDetails from '@/pages/Projects/ProjectDetails';
 import Analytics from '@/pages/Analytics';
 import Landing from '@/pages/Landing';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
@@ -31,6 +32,10 @@ const App: React.FC = () => {
         {
           path: '/projects',
           element: <Projects />,
+        },
+        {
+          path: '/projects/:projectId',
+          element: <ProjectDetails />,
         },
         {
           path: '/analytics',
