@@ -1,6 +1,9 @@
 import { motion } from 'framer-motion'
 import { GradientButton } from './GradientButton'
 import { CheckIcon } from '@heroicons/react/24/outline'
+import { useAuth } from '@/contexts/AuthContext'
+import { useSelector } from 'react-redux'
+import { RootState } from '@/store'
 
 interface PricingCardProps {
   name: string
@@ -19,6 +22,17 @@ export function PricingCard({
   isPopular = false,
   delay = 0
 }: PricingCardProps) {
+  const { openSignup } = useAuth();
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+
+  const handleGetStarted = () => {
+    if (isAuthenticated) {
+      window.location.href = '/dashboard';
+    } else {
+      openSignup();
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -56,8 +70,9 @@ export function PricingCard({
         <GradientButton
           variant={isPopular ? 'primary' : 'secondary'}
           className="w-full"
+          onClick={handleGetStarted}
         >
-          Get Started
+          {isAuthenticated ? 'Go to Dashboard' : 'Get Started'}
         </GradientButton>
       </div>
     </motion.div>

@@ -2,33 +2,44 @@ import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useDispatch } from 'react-redux';
 import { loginSuccess } from '@/store/slices/authSlice';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, CheckIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
-import { loginSchema } from '@/utils/validation';
+import { signupSchema } from '@/utils/validation';
 import type { ZodError } from 'zod';
 
-interface LoginModalProps {
+interface SignupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSignupClick: () => void;
+  onLoginClick: () => void;
 }
 
-function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
+function SignupModal({ isOpen, onClose, onLoginClick }: SignupModalProps) {
   const dispatch = useDispatch();
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
-    password: ''
+    password: '',
+    confirmPassword: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  // Password strength indicators
+  const passwordRequirements = [
+    { label: '8+ characters', test: (pass: string) => pass.length >= 8 },
+    { label: 'Uppercase letter', test: (pass: string) => /[A-Z]/.test(pass) },
+    { label: 'Lowercase letter', test: (pass: string) => /[a-z]/.test(pass) },
+    { label: 'Number', test: (pass: string) => /[0-9]/.test(pass) },
+    { label: 'Special character', test: (pass: string) => /[^A-Za-z0-9]/.test(pass) }
+  ];
 
   // Real-time validation
   useEffect(() => {
     if (Object.keys(touched).length === 0) return;
 
     try {
-      loginSchema.parse(formData);
+      signupSchema.parse(formData);
       setErrors({});
     } catch (error) {
       if (error instanceof Error) {
@@ -48,10 +59,15 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setTouched({ email: true, password: true });
+    setTouched({
+      name: true,
+      email: true,
+      password: true,
+      confirmPassword: true
+    });
 
     try {
-      loginSchema.parse(formData);
+      signupSchema.parse(formData);
     } catch (error) {
       if (error instanceof Error) {
         if ((error as ZodError).errors) {
@@ -74,14 +90,14 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       dispatch(loginSuccess({
-        id: '1',
+        id: Math.random().toString(),
         email: formData.email,
-        name: 'Demo User'
+        name: formData.name
       }));
       onClose();
     } catch (error) {
       setErrors({
-        submit: 'Invalid email or password'
+        submit: 'Failed to create account. Please try again.'
       });
     } finally {
       setIsLoading(false);
@@ -133,7 +149,7 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-gray-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all">
                 <div className="flex justify-between items-center mb-6">
                   <Dialog.Title as="h3" className="text-xl font-bold bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-                    Welcome back
+                    Create your account
                   </Dialog.Title>
                   <motion.button
                     whileHover={{ scale: 1.1 }}
@@ -146,6 +162,38 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-300">
+                      Name
+                    </label>
+                    <div className="mt-1">
+                      <input
+                        type="text"
+                        name="name"
+                        id="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        className={`block w-full rounded-lg bg-gray-700 border ${
+                          errors.name ? 'border-red-500' : 'border-gray-600'
+                        } px-4 py-2.5 text-white placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500`}
+                        placeholder="John Doe"
+                      />
+                      <AnimatePresence mode="wait">
+                        {errors.name && touched.name && (
+                          <motion.p
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="mt-1 text-sm text-red-500"
+                          >
+                            {errors.name}
+                          </motion.p>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-300">
                       Email
@@ -182,7 +230,7 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
                     <label htmlFor="password" className="block text-sm font-medium text-gray-300">
                       Password
                     </label>
-                    <div className="mt-1">
+                    <div className="mt-1 space-y-2">
                       <input
                         type="password"
                         name="password"
@@ -195,13 +243,30 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
                         } px-4 py-2.5 text-white placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500`}
                         placeholder="••••••••"
                       />
+                      <div className="grid grid-cols-2 gap-2">
+                        {passwordRequirements.map(({ label, test }) => (
+                          <div
+                            key={label}
+                            className={`flex items-center text-sm ${
+                              test(formData.password) ? 'text-green-400' : 'text-gray-400'
+                            }`}
+                          >
+                            {test(formData.password) ? (
+                              <CheckIcon className="h-4 w-4 mr-1.5" />
+                            ) : (
+                              <XCircleIcon className="h-4 w-4 mr-1.5" />
+                            )}
+                            {label}
+                          </div>
+                        ))}
+                      </div>
                       <AnimatePresence mode="wait">
                         {errors.password && touched.password && (
                           <motion.p
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="mt-1 text-sm text-red-500"
+                            className="text-sm text-red-500"
                           >
                             {errors.password}
                           </motion.p>
@@ -210,25 +275,35 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
+                  <div>
+                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300">
+                      Confirm Password
+                    </label>
+                    <div className="mt-1">
                       <input
-                        id="remember-me"
-                        name="remember-me"
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-gray-800"
+                        type="password"
+                        name="confirmPassword"
+                        id="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        className={`block w-full rounded-lg bg-gray-700 border ${
+                          errors.confirmPassword ? 'border-red-500' : 'border-gray-600'
+                        } px-4 py-2.5 text-white placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500`}
+                        placeholder="••••••••"
                       />
-                      <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-300">
-                        Remember me
-                      </label>
-                    </div>
-                    <div className="text-sm">
-                      <button
-                        type="button"
-                        className="font-medium text-indigo-400 hover:text-indigo-300"
-                      >
-                        Forgot password?
-                      </button>
+                      <AnimatePresence mode="wait">
+                        {errors.confirmPassword && touched.confirmPassword && (
+                          <motion.p
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="mt-1 text-sm text-red-500"
+                          >
+                            {errors.confirmPassword}
+                          </motion.p>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
 
@@ -259,24 +334,24 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
                           animate={{ rotate: 360 }}
                           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         />
-                        <span className="ml-2">Logging in...</span>
+                        <span className="ml-2">Creating account...</span>
                       </div>
                     ) : (
-                      'Log in'
+                      'Create account'
                     )}
                   </motion.button>
 
                   <div className="text-sm text-center">
-                    <span className="text-gray-400">Don't have an account?</span>{' '}
+                    <span className="text-gray-400">Already have an account?</span>{' '}
                     <button
                       type="button"
                       onClick={() => {
                         onClose();
-                        onSignupClick();
+                        onLoginClick();
                       }}
                       className="font-medium text-indigo-400 hover:text-indigo-300"
                     >
-                      Sign up
+                      Log in
                     </button>
                   </div>
                 </form>
@@ -289,4 +364,4 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
   );
 }
 
-export default LoginModal;
+export default SignupModal;

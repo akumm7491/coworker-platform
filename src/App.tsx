@@ -9,6 +9,7 @@ import ProjectDetails from '@/pages/Projects/ProjectDetails';
 import Analytics from '@/pages/Analytics';
 import Landing from '@/pages/Landing';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 const App: React.FC = () => {
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -49,7 +50,11 @@ const App: React.FC = () => {
     },
   ]);
 
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 };
 
 export default App;

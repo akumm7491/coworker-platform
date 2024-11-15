@@ -21,7 +21,7 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom', '@reduxjs/toolkit', 'react-redux']
+    include: ['react', 'react-dom', 'react-router-dom', '@reduxjs/toolkit', 'react-redux', 'zod']
   },
   server: {
     port: 3456,

@@ -10,14 +10,15 @@ import {
   ShieldCheckIcon,
   CpuChipIcon,
 } from '@heroicons/react/24/outline';
-import { useDispatch } from 'react-redux';
-import { loginSuccess } from '@/store/slices/authSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import { ParticleBackground } from '@/components/ui/ParticleBackground';
 import { FeatureCard } from '@/components/ui/FeatureCard';
 import { TypedText } from '@/components/ui/TypedText';
 import { InteractiveDemo } from '@/components/sections/InteractiveDemo';
 import { SocialProof } from '@/components/sections/SocialProof';
 import { CallToAction } from '@/components/sections/CallToAction';
+import { useAuth } from '@/contexts/AuthContext';
 
 const features = [
   {
@@ -29,104 +30,75 @@ const features = [
   {
     icon: BoltIcon,
     title: 'Real-time Collaboration',
-    description: 'Seamless coordination between human developers and AI agents for maximum efficiency.',
+    description: 'Work seamlessly with your team and AI agents in real-time, enhancing productivity and creativity.',
     color: 'from-[#7c3aed] to-[#06b6d4]'
   },
   {
     icon: BeakerIcon,
-    title: 'Smart Testing',
-    description: 'Automated test generation and execution with AI-driven coverage optimization.',
+    title: 'Continuous Learning',
+    description: 'Agents that continuously learn from your feedback and adapt to your specific needs and preferences.',
     color: 'from-[#06b6d4] to-[#2563eb]'
-  },
-  {
-    icon: RocketLaunchIcon,
-    title: 'Automated Deployment',
-    description: 'One-click deployments with built-in safety checks and rollback capabilities.',
-    color: 'from-[#2563eb] to-[#7c3aed]'
-  },
-  {
-    icon: LightBulbIcon,
-    title: 'Intelligent Insights',
-    description: 'Real-time analytics and AI-powered recommendations for code optimization.',
-    color: 'from-[#7c3aed] to-[#06b6d4]'
-  },
-  {
-    icon: CircleStackIcon,
-    title: 'Scalable Infrastructure',
-    description: 'Cloud-native architecture that automatically scales with your needs.',
-    color: 'from-[#06b6d4] to-[#2563eb]'
-  },
-  {
-    icon: ShieldCheckIcon,
-    title: 'Enterprise Security',
-    description: 'Bank-grade security with end-to-end encryption and advanced access controls.',
-    color: 'from-[#2563eb] to-[#7c3aed]'
-  },
-  {
-    icon: CpuChipIcon,
-    title: 'AI Model Integration',
-    description: 'Seamlessly integrate and customize AI models to enhance your development capabilities.',
-    color: 'from-[#7c3aed] to-[#06b6d4]'
   }
 ];
 
-const Landing = () => {
-  const dispatch = useDispatch();
-  const containerRef = useRef<HTMLDivElement>(null);
+const typedWords = [
+  'AI Development',
+  'Pair Programming',
+  'Code Generation',
+  'Team Collaboration'
+];
+
+function Landing() {
+  const targetRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"]
+    target: targetRef,
+    offset: ['start start', 'end start']
   });
 
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.8]);
+  const position = useTransform(scrollYProgress, (pos) => {
+    return pos === 1 ? 'relative' : 'fixed';
+  });
 
-  const handleLogin = () => {
-    dispatch(loginSuccess({
-      id: '1',
-      email: 'user@example.com',
-      name: 'Test User'
-    }));
+  const { openSignup } = useAuth();
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+
+  const handleGetStarted = () => {
+    if (isAuthenticated) {
+      window.location.href = '/dashboard';
+    } else {
+      openSignup();
+    }
   };
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-[#0f172a] font-['Inter'] text-[#f8fafc] relative overflow-hidden">
-      <ParticleBackground />
-      
-      {/* Hero Section */}
-      <div className="relative min-h-screen flex items-center">
-        <motion.div 
-          style={{ y, opacity }}
-          className="container mx-auto px-4 pt-32 pb-24 relative"
+    <div className="bg-gray-900 text-white">
+      <div ref={targetRef} className="min-h-screen">
+        <motion.div
+          style={{ opacity, scale, position }}
+          className="w-full min-h-screen top-0 flex items-center justify-center p-4"
         >
-          <div className="text-center max-w-4xl mx-auto relative z-10">
+          <ParticleBackground className="absolute inset-0" />
+
+          <div className="text-center z-10">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
               className="mb-8"
             >
-              <h1 className="font-['Space_Grotesk'] text-6xl sm:text-7xl font-bold mb-6">
-                <span className="bg-gradient-to-r from-[#2563eb] via-[#7c3aed] to-[#06b6d4] bg-clip-text text-transparent inline-block">
-                  <div className="mb-2 leading-tight">The Future of Software Development is</div>
-                  <div className="flex items-center justify-center min-h-[1.2em]">
-                    <TypedText 
-                      words={[
-                        'Autonomous',
-                        'Intelligent',
-                        'Limiteless',
-                        'Revolutionary',
-                        'Magical'
-                      ]}
-                      typingSpeed={100}
-                      deletingSpeed={50}
-                      delayBetweenWords={2000}
-                      className="min-w-[300px] px-1"
-                    />
-                  </div>
-                </span>
+              <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
+                The Future of
+                <br />
+                <TypedText
+                  words={typedWords}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 text-transparent bg-clip-text"
+                />
               </h1>
-              <p className="text-2xl text-gray-300 mb-8">
-                AI Agents that learn, collaborate, and build together
+              <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+                Experience the next generation of software development with AI agents that understand,
+                learn, and collaborate with your team in real-time.
               </p>
             </motion.div>
 
@@ -137,10 +109,10 @@ const Landing = () => {
               className="flex justify-center gap-6"
             >
               <button
-                onClick={handleLogin}
+                onClick={handleGetStarted}
                 className="px-8 py-4 bg-gradient-to-r from-[#2563eb] to-[#7c3aed] rounded-lg font-semibold text-lg hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-[#7c3aed]/20"
               >
-                Get Started Free
+                {isAuthenticated ? 'Go to Dashboard' : 'Get Started Free'}
               </button>
               <button className="px-8 py-4 border-2 border-[#7c3aed] rounded-lg font-semibold text-lg hover:bg-[#7c3aed]/10 transition-all duration-300">
                 Watch Demo
@@ -160,41 +132,28 @@ const Landing = () => {
             viewport={{ once: true }}
             className="text-center max-w-3xl mx-auto mb-20"
           >
-            <h2 className="font-['Space_Grotesk'] text-4xl sm:text-5xl font-bold mb-6 bg-gradient-to-r from-[#2563eb] via-[#7c3aed] to-[#06b6d4] bg-clip-text text-transparent">
-              Everything You Need
+            <h2 className="text-4xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
+              Supercharge Your Development
             </h2>
             <p className="text-xl text-gray-300">
-              A complete suite of AI-powered development tools designed to transform your workflow
+              Our platform combines cutting-edge AI technology with intuitive design to transform
+              your development workflow.
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-[#2563eb]/5 via-[#7c3aed]/5 to-[#06b6d4]/5 rounded-3xl -m-4 blur-3xl" />
+          <div className="grid md:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <FeatureCard {...feature} />
-              </motion.div>
+              <FeatureCard key={feature.title} {...feature} delay={index * 0.1} />
             ))}
           </div>
         </div>
       </div>
 
-      {/* Interactive Demo Section */}
       <InteractiveDemo />
-
-      {/* Social Proof Section */}
       <SocialProof />
-
-      {/* Call to Action Section */}
       <CallToAction />
     </div>
   );
-};
+}
 
 export default Landing;
