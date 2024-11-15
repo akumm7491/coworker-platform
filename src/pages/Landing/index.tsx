@@ -8,6 +8,7 @@ import {
   LightBulbIcon,
   CircleStackIcon,
   ShieldCheckIcon,
+  CpuChipIcon,
 } from '@heroicons/react/24/outline';
 import { useDispatch } from 'react-redux';
 import { loginSuccess } from '@/store/slices/authSlice';
@@ -60,6 +61,12 @@ const features = [
     title: 'Enterprise Security',
     description: 'Bank-grade security with end-to-end encryption and advanced access controls.',
     color: 'from-[#2563eb] to-[#7c3aed]'
+  },
+  {
+    icon: CpuChipIcon,
+    title: 'AI Model Integration',
+    description: 'Seamlessly integrate and customize AI models to enhance your development capabilities.',
+    color: 'from-[#7c3aed] to-[#06b6d4]'
   }
 ];
 
