@@ -45,13 +45,17 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
       // Attempt login
       const response = await login(formData);
       
+      // Update Redux store with user data and tokens
+      dispatch(loginSuccess({
+        ...response.user,
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken
+      }));
+
       // Only close modal and clear form on successful login
-      if (response.success) {
-        dispatch(loginSuccess(response));
-        setFormData(initialFormData);
-        setErrors({});
-        onClose();
-      }
+      setFormData(initialFormData);
+      setErrors({});
+      onClose();
     } catch (error) {
       console.error('Login error:', error);
       
@@ -183,34 +187,38 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
                     )}
                   </div>
 
-                  {/* Submit Button */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <input
+                        id="remember"
+                        type="checkbox"
+                        className="w-4 h-4 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <label htmlFor="remember" className="ml-2 text-sm text-gray-600">
+                        Remember me
+                      </label>
+                    </div>
+                    <button type="button" className="text-sm text-blue-600 hover:underline">
+                      Forgot password?
+                    </button>
+                  </div>
+
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className={`w-full rounded-lg px-5 py-2.5 text-center text-sm font-medium text-white
-                      ${isLoading
-                        ? 'bg-blue-300 cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300'
-                      }`}
+                    className={`w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center ${
+                      isLoading ? 'opacity-75 cursor-not-allowed' : ''
+                    }`}
                   >
-                    {isLoading ? (
-                      <div className="flex items-center justify-center">
-                        <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Logging in...
-                      </div>
-                    ) : (
-                      'Log in'
-                    )}
+                    {isLoading ? 'Signing in...' : 'Sign in'}
                   </button>
 
-                  {/* Signup Link */}
-                  <p className="text-sm text-gray-600 text-center">
+                  <p className="text-sm text-gray-500 text-center">
                     Don't have an account?{' '}
                     <button
                       type="button"
                       onClick={onSignupClick}
-                      className="text-blue-600 hover:underline focus:outline-none"
-                      disabled={isLoading}
+                      className="text-blue-600 hover:underline font-medium"
                     >
                       Sign up
                     </button>
