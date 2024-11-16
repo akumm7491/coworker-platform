@@ -31,7 +31,3 @@ export function GradientButton({
     </motion.button>
   )
 }
-l h-full bg-gradient-to-r from-blue-600/20 to-indigo-600/20 blur-xl" />
-    </motion.button>
-  )
-}
