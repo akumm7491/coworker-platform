@@ -14,7 +14,7 @@ export const createToken = (userId: string): string => {
   }
 };
 
-export const protect = async (req: Request, res: Response, next: NextFunction) => {
+export const protect = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     let token: string | undefined;
 
@@ -27,10 +27,11 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
     // Check if token exists
     if (!token) {
       console.log('No token provided');
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Not authorized to access this route'
       });
+      return;
     }
 
     try {
@@ -42,27 +43,34 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
       const user = await User.findById(decoded.id);
       if (!user) {
         console.log('User not found for token:', decoded.id);
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           error: 'User not found'
         });
+        return;
       }
 
       // Add user to request object
-      req.user = user;
+      req.user = {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email
+      };
       next();
     } catch (error) {
       console.error('Token verification error:', error);
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Not authorized to access this route'
       });
+      return;
     }
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    return res.status(500).json({
+    console.error('Protect middleware error:', error);
+    res.status(500).json({
       success: false,
       error: 'Server error in authentication'
     });
+    return;
   }
 };

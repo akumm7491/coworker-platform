@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, RequestHandler } from 'express';
 import { body } from 'express-validator';
 import { register, login, getMe } from '../controllers/auth.js';
 import { protect } from '../middleware/auth.js';
@@ -48,9 +48,15 @@ const loginValidation = [
     .withMessage('Password is required')
 ];
 
+// Convert async handlers to standard Express handlers
+const asyncHandler = (fn: RequestHandler): RequestHandler => 
+  (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+
 // Routes
-router.post('/register', registerValidation, register);
-router.post('/login', loginValidation, login);
-router.get('/me', protect, getMe);
+router.post('/register', registerValidation, asyncHandler(register as RequestHandler));
+router.post('/login', loginValidation, asyncHandler(login as RequestHandler));
+router.get('/me', protect, asyncHandler(getMe as RequestHandler));
 
 export default router;

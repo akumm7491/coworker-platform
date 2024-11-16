@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
@@ -37,7 +37,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Debug middleware
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   console.log('Headers:', req.headers);
   console.log('Body:', req.body);
@@ -45,7 +45,7 @@ app.use((req, res, next) => {
 });
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -55,11 +55,13 @@ app.use('/api/auth', authRoutes);
 // WebSocket setup
 setupWebSocketHandlers(io);
 
-// Error handling
-app.use(errorHandler);
+// Error handling middleware must be after all routes
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  errorHandler(err, req, res, next);
+});
 
-// 404 handler
-app.use((req, res) => {
+// 404 handler must be after all routes
+app.use((req: Request, res: Response) => {
   console.log(`404 Not Found: ${req.method} ${req.url}`);
   res.status(404).json({
     status: 'error',

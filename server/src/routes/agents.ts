@@ -1,7 +1,7 @@
-import { Router } from 'express';
-import { Agent } from '../../../shared/types';
+import { Router, Request, Response, NextFunction } from 'express';
+import type { Agent } from '../types/shared.js';
 import { v4 as uuidv4 } from 'uuid';
-import { AppError } from '../middleware/error';
+import { AppError } from '../middleware/error.js';
 
 const router = Router();
 
@@ -20,12 +20,12 @@ let agents: Agent[] = [
 ];
 
 // Get all agents
-router.get('/', (req, res) => {
+router.get('/', (req: Request, res: Response) => {
   res.json(agents);
 });
 
 // Get agent by ID
-router.get('/:id', (req, res, next) => {
+router.get('/:id', (req: Request, res: Response, next: NextFunction) => {
   const agent = agents.find(a => a.id === req.params.id);
   if (!agent) {
     return next(new AppError(404, 'Agent not found'));
@@ -34,7 +34,7 @@ router.get('/:id', (req, res, next) => {
 });
 
 // Create new agent
-router.post('/', (req, res, next) => {
+router.post('/', (req: Request, res: Response, next: NextFunction) => {
   try {
     const newAgent: Agent = {
       id: uuidv4(),
@@ -50,7 +50,7 @@ router.post('/', (req, res, next) => {
 });
 
 // Update agent
-router.put('/:id', (req, res, next) => {
+router.put('/:id', (req: Request, res: Response, next: NextFunction) => {
   const index = agents.findIndex(a => a.id === req.params.id);
   if (index === -1) {
     return next(new AppError(404, 'Agent not found'));
@@ -69,7 +69,7 @@ router.put('/:id', (req, res, next) => {
 });
 
 // Delete agent
-router.delete('/:id', (req, res, next) => {
+router.delete('/:id', (req: Request, res: Response, next: NextFunction) => {
   const index = agents.findIndex(a => a.id === req.params.id);
   if (index === -1) {
     return next(new AppError(404, 'Agent not found'));

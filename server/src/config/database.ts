@@ -10,14 +10,14 @@ export const connectDB = async () => {
     mongoose.set('strictQuery', false);
 
     // Configure connection options
-    const options = {
+    const options: mongoose.ConnectOptions = {
       autoIndex: true, // Build indexes
       maxPoolSize: 10, // Maintain up to 10 socket connections
       serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
       socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
       family: 4, // Use IPv4, skip trying IPv6
       retryWrites: true,
-      w: 'majority'
+      writeConcern: { w: 'majority' }
     };
 
     // Connect to MongoDB

@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-service
+  labels:
+    app: agent-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agent-service
+  template:
+    metadata:
+      labels:
+        app: agent-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3003"
+    spec:
+      containers:
+      - name: agent-service
+        image: coworker-platform/agent-service:latest
+        ports:
+        - containerPort: 3003
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: MONGODB_URL
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: url
+        - name: POSTGRES_URL
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: url
+        - name: KAFKA_BROKERS
+          value: "kafka-service:9092"
+        - name: REDIS_URL
+          value: "redis://redis-service:6379"
+        - name: ELASTICSEARCH_URL
+          value: "http://elasticsearch-service:9200"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3003
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3003
+          initialDelaySeconds: 15
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-service
+  labels:
+    app: agent-service
+spec:
+  selector:
+    app: agent-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3003
+  type: ClusterIP
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: agent-service
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - coworker-platform-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /api/agents
+    route:
+    - destination:
+        host: agent-service
+        port:
+          number: 80
+    retries:
+      attempts: 3
+      perTryTimeout: "2s"
+    timeout: "5s"
+    fault:
+      delay:
+        percentage:
+          value: 0.1
+        fixedDelay: "100ms"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agent-service-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agent-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+apiVersion: policy.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: agent-service-auth
+spec:
+  selector:
+    matchLabels:
+      app: agent-service
+  mtls:
+    mode: STRICT

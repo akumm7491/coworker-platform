@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 export interface IUser extends Document {
+  _id: mongoose.Types.ObjectId;
   name: string;
   email: string;
   password: string;
@@ -49,16 +50,12 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-// Method to compare password
+// Method to compare password for login
 userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
   try {
-    // Since password field is not selected by default, we need to ensure it's available
-    if (!this.password) {
-      throw new Error('Password field not selected');
-    }
     return await bcrypt.compare(candidatePassword, this.password);
   } catch (error) {
-    console.error('Error comparing password:', error);
+    console.error('Error comparing passwords:', error);
     throw error;
   }
 };

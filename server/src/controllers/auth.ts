@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
-import { User } from '../models/User.js';
+import { User, IUser } from '../models/User.js';
 import { createToken } from '../middleware/auth.js';
 import { validationResult } from 'express-validator';
+import mongoose from 'mongoose';
 
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     console.log('Register request received:', req.body);
 
@@ -14,22 +15,24 @@ export const register = async (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       console.log('Validation errors:', errors.array());
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         errors: errors.array()
       });
+      return;
     }
 
-    const { name, email, password } = req.body;
+    const { name, email, password } = req.body as { name: string; email: string; password: string };
 
     // Check if user already exists
     const existingUser = await User.findOne({ email }).select('+password');
     if (existingUser) {
       console.log('User already exists:', email);
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'User already exists'
       });
+      return;
     }
 
     console.log('Creating new user:', { name, email });
@@ -42,7 +45,7 @@ export const register = async (req: Request, res: Response) => {
     });
 
     // Create token
-    const token = createToken(user._id);
+    const token = createToken(user._id.toString());
 
     console.log('User created successfully:', { id: user._id, name: user.name, email: user.email });
 
@@ -57,16 +60,10 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Register error:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-    }
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     res.status(500).json({
       success: false,
-      error: 'Server error during registration'
+      error: errorMessage
     });
   }
 };
@@ -74,7 +71,7 @@ export const register = async (req: Request, res: Response) => {
 // @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     console.log('Login request received:', { email: req.body.email });
 
@@ -82,40 +79,43 @@ export const login = async (req: Request, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       console.log('Validation errors:', errors.array());
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         errors: errors.array()
       });
+      return;
     }
 
-    const { email, password } = req.body;
+    const { email, password } = req.body as { email: string; password: string };
 
     // Check if user exists
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select('+password') as IUser | null;
     if (!user) {
       console.log('User not found:', email);
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Invalid credentials'
       });
+      return;
     }
 
-    // Check password
+    // Check if password matches
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      console.log('Invalid password for user:', email);
-      return res.status(401).json({
+      console.log('Password does not match for user:', email);
+      res.status(401).json({
         success: false,
         error: 'Invalid credentials'
       });
+      return;
     }
 
     // Create token
-    const token = createToken(user._id);
+    const token = createToken(user._id.toString());
 
-    console.log('User logged in successfully:', { id: user._id, email: user.email });
+    console.log('User logged in successfully:', { id: user._id, name: user.name, email: user.email });
 
-    res.json({
+    res.status(200).json({
       success: true,
       token,
       user: {
@@ -126,16 +126,10 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-    }
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     res.status(500).json({
       success: false,
-      error: 'Server error during login'
+      error: errorMessage
     });
   }
 };
@@ -143,21 +137,27 @@ export const login = async (req: Request, res: Response) => {
 // @desc    Get current logged in user
 // @route   GET /api/auth/me
 // @access  Private
-export const getMe = async (req: Request, res: Response) => {
+export const getMe = async (req: Request, res: Response): Promise<void> => {
   try {
     console.log('Get current user request received');
 
-    // @ts-ignore - user is added by auth middleware
-    const user = await User.findById(req.user.id);
+    if (!req.user?.id) {
+      res.status(401).json({
+        success: false,
+        error: 'Not authorized'
+      });
+      return;
+    }
+
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+    const user = await User.findById(userId);
     if (!user) {
-      console.log('User not found in getMe');
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'User not found'
       });
+      return;
     }
-
-    console.log('Current user retrieved:', { id: user._id, email: user.email });
 
     res.json({
       success: true,
@@ -169,16 +169,10 @@ export const getMe = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('GetMe error:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-    }
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     res.status(500).json({
       success: false,
-      error: 'Server error while getting user data'
+      error: errorMessage
     });
   }
 };

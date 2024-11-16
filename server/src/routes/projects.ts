@@ -1,7 +1,7 @@
-import { Router } from 'express';
-import { Project } from '../../../shared/types';
+import { Router, Request, Response, NextFunction } from 'express';
+import type { Project } from '../types/shared.js';
 import { v4 as uuidv4 } from 'uuid';
-import { AppError } from '../middleware/error';
+import { AppError } from '../middleware/error.js';
 
 const router = Router();
 
@@ -20,12 +20,12 @@ let projects: Project[] = [
 ];
 
 // Get all projects
-router.get('/', (req, res) => {
+router.get('/', (req: Request, res: Response) => {
   res.json(projects);
 });
 
 // Get project by ID
-router.get('/:id', (req, res, next) => {
+router.get('/:id', (req: Request, res: Response, next: NextFunction) => {
   const project = projects.find(p => p.id === req.params.id);
   if (!project) {
     return next(new AppError(404, 'Project not found'));
@@ -34,7 +34,7 @@ router.get('/:id', (req, res, next) => {
 });
 
 // Create new project
-router.post('/', (req, res, next) => {
+router.post('/', (req: Request, res: Response, next: NextFunction) => {
   try {
     const newProject: Project = {
       id: uuidv4(),
@@ -50,7 +50,7 @@ router.post('/', (req, res, next) => {
 });
 
 // Update project
-router.put('/:id', (req, res, next) => {
+router.put('/:id', (req: Request, res: Response, next: NextFunction) => {
   const index = projects.findIndex(p => p.id === req.params.id);
   if (index === -1) {
     return next(new AppError(404, 'Project not found'));
@@ -69,7 +69,7 @@ router.put('/:id', (req, res, next) => {
 });
 
 // Delete project
-router.delete('/:id', (req, res, next) => {
+router.delete('/:id', (req: Request, res: Response, next: NextFunction) => {
   const index = projects.findIndex(p => p.id === req.params.id);
   if (index === -1) {
     return next(new AppError(404, 'Project not found'));
@@ -80,14 +80,15 @@ router.delete('/:id', (req, res, next) => {
 });
 
 // Assign agent to project
-router.post('/:id/agents/:agentId', (req, res, next) => {
+router.post('/:id/agents/:agentId', (req: Request, res: Response, next: NextFunction) => {
   const project = projects.find(p => p.id === req.params.id);
   if (!project) {
     return next(new AppError(404, 'Project not found'));
   }
 
-  if (!project.agents_assigned.includes(req.params.agentId)) {
-    project.agents_assigned.push(req.params.agentId);
+  const agentId: string = req.params.agentId;
+  if (!project.agents_assigned.includes(agentId)) {
+    project.agents_assigned.push(agentId);
     project.updated_at = new Date().toISOString();
   }
 
@@ -95,13 +96,14 @@ router.post('/:id/agents/:agentId', (req, res, next) => {
 });
 
 // Remove agent from project
-router.delete('/:id/agents/:agentId', (req, res, next) => {
+router.delete('/:id/agents/:agentId', (req: Request, res: Response, next: NextFunction) => {
   const project = projects.find(p => p.id === req.params.id);
   if (!project) {
     return next(new AppError(404, 'Project not found'));
   }
 
-  project.agents_assigned = project.agents_assigned.filter(id => id !== req.params.agentId);
+  const agentId: string = req.params.agentId;
+  project.agents_assigned = project.agents_assigned.filter(id => id !== agentId);
   project.updated_at = new Date().toISOString();
 
   res.json(project);

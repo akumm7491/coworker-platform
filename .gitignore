@@ -1,17 +1,23 @@
 # Dependencies
-node_modules
+node_modules/
 /.pnp
 .pnp.js
 yarn.lock
 package-lock.json
+**/package-lock.json
 
 # Testing
 /coverage
+/cypress/videos/
+/cypress/screenshots/
+/cypress/downloads/
+*.lcov
+.nyc_output/
 
 # Production
 /build
 /dist
-server/dist
+**/dist/
 /.next
 /out
 
@@ -27,6 +33,8 @@ server/dist
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+debug.log
+*.log
 
 # IDE - VSCode
 .vscode/*
@@ -47,15 +55,136 @@ yarn-error.log*
 .AppleDouble
 .LSOverride
 ._*
+.Spotlight-V100
+.Trashes
+Icon?
 
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+**/*.js.map
+**/*.d.ts.map
 
-# Misc
-.cache
-.temp
-*.log
+# Istio
+istio-*/
+*/istio-*/
+.istiorc
+.istiorc.yaml
+istio.yaml
+istioctl
+istio.VERSION
+istio.io/
+downloadIstio.sh
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+.kube/
+kubectl
+.kubectl/
+*.cer
+*.crt
+*.key
+*.pem
+k8s-*
+.minikube/
+
+# Docker
+.docker/
+docker-compose.override.yml
+docker-compose.override.yaml
+docker-compose-local.yml
+docker-compose.test.yml
+Dockerfile.local
+Dockerfile.test
+
+# Development tools
+.eslintcache
+.stylelintcache
+.prettier*
+*.prettier*
+.editorconfig
+.nvmrc
+.tool-versions
+.node-version
+.husky/
+
+# Build and temp files
+.cache/
+.temp/
+tmp/
+temp/
+*.tmp
+*.temp
 *.bak
 *.swp
 *.swo
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+*.sqlite3
+dump.rdb
+*.rdb
+mongod.lock
+*.mongodb
+*.mongorc.js
+
+# Generated files
+generated/
+*.generated.*
+.generated
+dist-*/
+build-*/
+*.min.*
+*.bundle.*
+*.chunk.*
+shared/*.js
+shared/*.js.map
+shared/*.d.ts.map
+
+# Dependency directories
+jspm_packages/
+bower_components/
+vendor/
+
+# Coverage and reports
+coverage/
+.nyc_output/
+reports/
+*.report.html
+*.report.json
+*.report.xml
+
+# Local development
+*.local
+local.*
+.local/
+.history/
+.git/
+*.patch
+*.diff
+*.orig
+*.rej
+*.conflict
+
+# Secrets and keys
+*.pem
+*.key
+*.pub
+*.crt
+*.csr
+*.cer
+*.der
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+secrets/
+.secrets/
+.ssh/
+id_*
+known_hosts
+authorized_keys
