@@ -8,24 +8,7 @@ interface UserState {
 }
 
 const initialState: UserState = {
-  profile: {
-    id: '1',
-    name: 'Alex Thompson',
-    email: 'alex@example.com',
-    role: 'admin',
-    avatar: '/images/avatars/avatar1.svg',
-    teams: ['Platform', 'AI Research'],
-    preferences: {
-      theme: 'light',
-      notifications: true,
-      emailUpdates: true
-    },
-    stats: {
-      projectsManaged: 12,
-      agentsSupervised: 25,
-      tasksCompleted: 147
-    }
-  },
+  profile: null,
   loading: false,
   error: null
 }

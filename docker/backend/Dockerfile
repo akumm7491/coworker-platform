@@ -1,5 +1,5 @@
-# Build stage
-FROM node:18-alpine as builder
+# Development stage
+FROM node:18.20.4-alpine
 
 WORKDIR /app
 
@@ -17,28 +17,12 @@ RUN npm install
 COPY server/src/ ./src/
 COPY shared/ ../shared/
 
-# Build TypeScript code
-RUN npm run build
-
-# Production stage
-FROM node:18-alpine
-
-WORKDIR /app
-
-# Install production dependencies
-COPY server/package*.json ./
-RUN npm install --production
-
-# Copy built files from builder stage
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/../shared ../shared
-
-# Add health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3457/api/health || exit 1
+# Set Node.js options for development
+ENV NODE_ENV=development
+ENV DEBUG=*
+ENV NODE_OPTIONS="--experimental-specifier-resolution=node"
 
 EXPOSE 3457
 
-# Start the server using the compiled JavaScript
-CMD ["node", "--experimental-specifier-resolution=node", "--es-module-specifier-resolution=node", "dist/index.js"]
+# Start the server in development mode
+CMD ["npx", "nodemon", "--exec", "node", "--loader", "ts-node/esm", "src/index.ts"]

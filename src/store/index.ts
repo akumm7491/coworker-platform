@@ -1,17 +1,17 @@
 import { configureStore } from '@reduxjs/toolkit'
-import {
-  agentsReducer,
-  projectsReducer,
-  userReducer,
-  authReducer
-} from './slices'
+import agentsReducer from './slices/agentsSlice'
+import projectsReducer from './slices/projectsSlice'
+import userReducer from './slices/userSlice'
+import authReducer from './slices/authSlice'
+import tasksReducer from './slices/tasksSlice'
 
 export const store = configureStore({
   reducer: {
     agents: agentsReducer,
     projects: projectsReducer,
     user: userReducer,
-    auth: authReducer
+    auth: authReducer,
+    tasks: tasksReducer
   }
 })
 

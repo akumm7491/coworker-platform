@@ -3,28 +3,40 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import { config } from './config/env.js';
-import { setupWebSocketHandlers } from './sockets.js';
+import { setupWebSocketHandlers } from './sockets/index.js';
 import authRoutes from './routes/auth.js';
+import projectRoutes from './routes/projects.js';
+import agentRoutes from './routes/agents.js';
 import { errorHandler } from './middleware/error.js';
 import { connectDB } from './config/database.js';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 
-// Connect to MongoDB
-connectDB();
-
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: config.corsOrigins,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true
-  }
-});
+
+// Only connect to DB and setup WebSocket in non-test environment
+if (process.env.NODE_ENV !== 'test') {
+  // Connect to MongoDB
+  connectDB();
+
+  // Setup WebSocket
+  const io = new Server(httpServer, {
+    cors: {
+      origin: config.corsOrigins,
+      methods: ['GET', 'POST', 'PUT', 'DELETE'],
+      credentials: true
+    }
+  });
+
+  // WebSocket setup
+  setupWebSocketHandlers(io);
+}
 
 // Middleware
-app.use(morgan('dev')); // Add request logging
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('dev')); // Add request logging in non-test environment
+}
 
 app.use(cors({
   origin: config.corsOrigins,
@@ -36,37 +48,26 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Debug middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  console.log('Headers:', req.headers);
-  console.log('Body:', req.body);
-  next();
-});
-
-// Health check endpoint
-app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+// Debug middleware (only in development)
+if (process.env.NODE_ENV === 'development') {
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    console.log(`${req.method} ${req.url}`);
+    console.log('Body:', req.body);
+    next();
+  });
+}
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/agents', agentRoutes);
 
-// WebSocket setup
-setupWebSocketHandlers(io);
-
-// Error handling middleware must be after all routes
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  errorHandler(err, req, res, next);
+// Health check endpoint
+app.get('/api/health', (_req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok' });
 });
 
-// 404 handler must be after all routes
-app.use((req: Request, res: Response) => {
-  console.log(`404 Not Found: ${req.method} ${req.url}`);
-  res.status(404).json({
-    status: 'error',
-    message: 'Not found'
-  });
-});
+// Error handling
+app.use(errorHandler);
 
-export { app, httpServer, io };
+export { app, httpServer };

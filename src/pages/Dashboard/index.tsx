@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
+import { fetchProjects } from '@/store/slices/projectsSlice';
+import { fetchAgents } from '@/store/slices/agentsSlice';
 import {
   Card,
   PageContainer,
@@ -30,28 +32,98 @@ import {
 } from 'recharts';
 
 function Dashboard() {
+  const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { agents = [] } = useSelector((state: RootState) => state.agents);
-  const { projects = [] } = useSelector((state: RootState) => state.projects);
+  const [taskDistribution, setTaskDistribution] = useState([
+    { name: 'Completed', value: 0, color: '#818CF8' },
+    { name: 'In Progress', value: 0, color: '#34D399' },
+    { name: 'Pending', value: 0, color: '#F472B6' }
+  ]);
+  const [performanceData, setPerformanceData] = useState([]);
+  
+  const { agents = [], loading: agentsLoading } = useSelector((state: RootState) => state.agents);
+  const { projects = [], loading: projectsLoading, error: projectsError } = useSelector((state: RootState) => state.projects);
 
-  const taskDistribution = [
-    { name: 'Completed', value: 45, color: '#818CF8' },
-    { name: 'In Progress', value: 35, color: '#34D399' },
-    { name: 'Pending', value: 20, color: '#F472B6' }
-  ];
+  // Fetch projects and agents on mount
+  useEffect(() => {
+    dispatch(fetchProjects());
+    dispatch(fetchAgents());
+  }, [dispatch]);
 
-  const performanceData = [
-    { name: 'Jan', tasks: 85, efficiency: 78 },
-    { name: 'Feb', tasks: 88, efficiency: 82 },
-    { name: 'Mar', tasks: 92, efficiency: 85 },
-    { name: 'Apr', tasks: 90, efficiency: 88 },
-    { name: 'May', tasks: 95, efficiency: 92 },
-  ];
+  // Fetch dashboard analytics data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!projects.length) return; // Don't fetch analytics if no projects exist
 
-  if (isLoading) {
+      setIsLoading(true);
+      try {
+        const accessToken = localStorage.getItem('accessToken');
+        if (!accessToken) {
+          throw new Error('No access token found');
+        }
+
+        const [taskDistResponse, perfResponse] = await Promise.all([
+          fetch('/api/analytics/task-distribution', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            }
+          }),
+          fetch('/api/analytics/performance', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`
+            }
+          })
+        ]);
+
+        // Log responses for debugging
+        console.log('Task Distribution Response:', taskDistResponse);
+        console.log('Performance Response:', perfResponse);
+
+        if (!taskDistResponse.ok) {
+          throw new Error(`Task distribution fetch failed: ${taskDistResponse.status}`);
+        }
+        if (!perfResponse.ok) {
+          throw new Error(`Performance data fetch failed: ${perfResponse.status}`);
+        }
+
+        const taskDistData = await taskDistResponse.json();
+        const perfData = await perfResponse.json();
+
+        // Validate response data
+        if (!Array.isArray(taskDistData)) {
+          console.error('Invalid task distribution data:', taskDistData);
+          throw new Error('Invalid task distribution data format');
+        }
+        if (!Array.isArray(perfData)) {
+          console.error('Invalid performance data:', perfData);
+          throw new Error('Invalid performance data format');
+        }
+
+        setTaskDistribution(taskDistData);
+        setPerformanceData(perfData);
+      } catch (err) {
+        console.error('Dashboard data fetch error:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [projects]);
+
+  const isPageLoading = isLoading || projectsLoading || agentsLoading;
+  const pageError = error || projectsError;
+
+  if (isPageLoading) {
     return (
       <PageContainer>
+        <PageHeader
+          title="Dashboard"
+          description="Monitor your autonomous agent platform performance"
+          icon={<ChartBarIcon className="w-8 h-8 text-indigo-600" />}
+        />
         <div className="flex items-center justify-center min-h-[60vh]">
           <motion.div 
             className="flex flex-col items-center space-y-4"
@@ -83,18 +155,27 @@ function Dashboard() {
     );
   }
 
-  if (error) {
+  if (pageError) {
     return (
-      <PageContainer variant="error">
+      <PageContainer>
+        <PageHeader
+          title="Dashboard"
+          description="Monitor your autonomous agent platform performance"
+          icon={<ChartBarIcon className="w-8 h-8 text-indigo-600" />}
+        />
         <EmptyState
           icon={BeakerIcon}
           title="Error Loading Dashboard"
-          description={error}
+          description={pageError}
           action={
             <Button
               variant="primary"
               leftIcon={<ArrowTrendingUpIcon className="w-5 h-5" />}
-              onClick={() => setError(null)}
+              onClick={() => {
+                setError(null);
+                dispatch(fetchProjects());
+                dispatch(fetchAgents());
+              }}
             >
               Try Again
             </Button>
@@ -147,16 +228,6 @@ function Dashboard() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={performanceData}>
-                <defs>
-                  <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#818CF8" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#818CF8" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorEfficiency" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#34D399" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#34D399" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -173,80 +244,31 @@ function Dashboard() {
                   type="monotone"
                   dataKey="tasks"
                   stroke="#818CF8"
-                  strokeWidth={3}
-                  name="Tasks"
-                  dot={{ strokeWidth: 2 }}
-                  activeDot={{ r: 6, strokeWidth: 2 }}
-                  fillOpacity={1}
-                  fill="url(#colorTasks)"
+                  strokeWidth={2}
+                  dot={false}
                 />
                 <Line
                   type="monotone"
                   dataKey="efficiency"
                   stroke="#34D399"
-                  strokeWidth={3}
-                  name="Efficiency"
-                  dot={{ strokeWidth: 2 }}
-                  activeDot={{ r: 6, strokeWidth: 2 }}
-                  fillOpacity={1}
-                  fill="url(#colorEfficiency)"
+                  strokeWidth={2}
+                  dot={false}
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
-        <PieChartCard
-          title="Task Distribution"
-          icon={<CpuChipIcon className="w-6 h-6 text-indigo-600" />}
-          data={taskDistribution}
-        />
+        <Card hover blur className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-bold text-gray-900">Task Distribution</h3>
+            <ClockIcon className="w-6 h-6 text-indigo-600" />
+          </div>
+          <div className="h-64">
+            <PieChartCard data={taskDistribution} />
+          </div>
+        </Card>
       </div>
-
-      <Card hover blur className="p-6 mt-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-gray-900">Agent Performance Metrics</h3>
-          <RocketLaunchIcon className="w-6 h-6 text-indigo-600" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4"
-          >
-            <div className="flex items-center space-x-3">
-              <CheckCircleIcon className="w-8 h-8 text-indigo-600" />
-              <div>
-                <h4 className="text-sm font-medium text-indigo-900">Task Completion</h4>
-                <p className="text-2xl font-bold text-indigo-600">92%</p>
-              </div>
-            </div>
-          </motion.div>
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-4"
-          >
-            <div className="flex items-center space-x-3">
-              <ClockIcon className="w-8 h-8 text-emerald-600" />
-              <div>
-                <h4 className="text-sm font-medium text-emerald-900">Response Time</h4>
-                <p className="text-2xl font-bold text-emerald-600">1.2s</p>
-              </div>
-            </div>
-          </motion.div>
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="bg-gradient-to-br from-rose-50 to-pink-50 rounded-xl p-4"
-          >
-            <div className="flex items-center space-x-3">
-              <ArrowTrendingUpIcon className="w-8 h-8 text-rose-600" />
-              <div>
-                <h4 className="text-sm font-medium text-rose-900">Success Rate</h4>
-                <p className="text-2xl font-bold text-rose-600">95%</p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </Card>
     </PageContainer>
   );
 }

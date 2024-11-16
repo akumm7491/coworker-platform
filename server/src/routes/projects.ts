@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import type { Project } from '../types/shared.js';
+import type { Project, ProjectTask } from '../types/shared.js';
 import { v4 as uuidv4 } from 'uuid';
 import { AppError } from '../middleware/error.js';
 
@@ -15,12 +15,13 @@ let projects: Project[] = [
     completion: 75,
     agents_assigned: [],
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    tasks: []
   }
 ];
 
 // Get all projects
-router.get('/', (req: Request, res: Response) => {
+router.get('/', (_req: Request, res: Response) => {
   res.json(projects);
 });
 
@@ -39,6 +40,7 @@ router.post('/', (req: Request, res: Response, next: NextFunction) => {
     const newProject: Project = {
       id: uuidv4(),
       ...req.body,
+      tasks: [],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -55,14 +57,15 @@ router.put('/:id', (req: Request, res: Response, next: NextFunction) => {
   if (index === -1) {
     return next(new AppError(404, 'Project not found'));
   }
-  
+
   try {
-    projects[index] = {
+    const updatedProject = {
       ...projects[index],
       ...req.body,
       updated_at: new Date().toISOString()
     };
-    res.json(projects[index]);
+    projects[index] = updatedProject;
+    res.json(updatedProject);
   } catch (error) {
     next(new AppError(400, 'Invalid project data'));
   }
@@ -74,39 +77,86 @@ router.delete('/:id', (req: Request, res: Response, next: NextFunction) => {
   if (index === -1) {
     return next(new AppError(404, 'Project not found'));
   }
-  
-  projects = projects.filter(p => p.id !== req.params.id);
+
+  projects.splice(index, 1);
   res.status(204).send();
 });
 
-// Assign agent to project
-router.post('/:id/agents/:agentId', (req: Request, res: Response, next: NextFunction) => {
-  const project = projects.find(p => p.id === req.params.id);
+// Task Routes
+
+// Get all tasks for a project
+router.get('/:projectId/tasks', (req: Request, res: Response, next: NextFunction) => {
+  const project = projects.find(p => p.id === req.params.projectId);
   if (!project) {
     return next(new AppError(404, 'Project not found'));
   }
-
-  const agentId: string = req.params.agentId;
-  if (!project.agents_assigned.includes(agentId)) {
-    project.agents_assigned.push(agentId);
-    project.updated_at = new Date().toISOString();
-  }
-
-  res.json(project);
+  res.json(project.tasks || []);
 });
 
-// Remove agent from project
-router.delete('/:id/agents/:agentId', (req: Request, res: Response, next: NextFunction) => {
-  const project = projects.find(p => p.id === req.params.id);
+// Create new task
+router.post('/:projectId/tasks', (req: Request, res: Response, next: NextFunction) => {
+  const project = projects.find(p => p.id === req.params.projectId);
   if (!project) {
     return next(new AppError(404, 'Project not found'));
   }
 
-  const agentId: string = req.params.agentId;
-  project.agents_assigned = project.agents_assigned.filter(id => id !== agentId);
-  project.updated_at = new Date().toISOString();
+  try {
+    const newTask: ProjectTask = {
+      id: uuidv4(),
+      ...req.body,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
 
-  res.json(project);
+    if (!project.tasks) {
+      project.tasks = [];
+    }
+    project.tasks.push(newTask);
+    res.status(201).json(newTask);
+  } catch (error) {
+    next(new AppError(400, 'Invalid task data'));
+  }
+});
+
+// Update task
+router.put('/:projectId/tasks/:taskId', (req: Request, res: Response, next: NextFunction) => {
+  const project = projects.find(p => p.id === req.params.projectId);
+  if (!project) {
+    return next(new AppError(404, 'Project not found'));
+  }
+
+  const taskIndex = project.tasks?.findIndex(t => t.id === req.params.taskId);
+  if (!project.tasks || taskIndex === -1) {
+    return next(new AppError(404, 'Task not found'));
+  }
+
+  try {
+    const updatedTask = {
+      ...project.tasks[taskIndex],
+      ...req.body,
+      updated_at: new Date().toISOString()
+    };
+    project.tasks[taskIndex] = updatedTask;
+    res.json(updatedTask);
+  } catch (error) {
+    next(new AppError(400, 'Invalid task data'));
+  }
+});
+
+// Delete task
+router.delete('/:projectId/tasks/:taskId', (req: Request, res: Response, next: NextFunction) => {
+  const project = projects.find(p => p.id === req.params.projectId);
+  if (!project) {
+    return next(new AppError(404, 'Project not found'));
+  }
+
+  const taskIndex = project.tasks?.findIndex(t => t.id === req.params.taskId);
+  if (!project.tasks || taskIndex === -1) {
+    return next(new AppError(404, 'Task not found'));
+  }
+
+  project.tasks.splice(taskIndex, 1);
+  res.status(204).send();
 });
 
 export default router;

@@ -10,17 +10,24 @@ let agents: Agent[] = [
   {
     id: uuidv4(),
     name: "Agent Smith",
+    type: "developer",
     status: "idle",
-    type: "assistant",
-    tasks_completed: 0,
-    success_rate: 1.0,
+    performance: {
+      tasksCompleted: 0,
+      successRate: 100,
+      averageTime: 0
+    },
+    capabilities: ["development", "testing"],
+    learningRate: 1.0,
+    maxConcurrentTasks: 3,
+    description: "A versatile development agent",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   }
 ];
 
 // Get all agents
-router.get('/', (req: Request, res: Response) => {
+router.get('/', (_req: Request, res: Response) => {
   res.json(agents);
 });
 

@@ -32,6 +32,7 @@ interface LoginData {
 
 // Configure axios
 const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3457',
   headers: {
     'Content-Type': 'application/json'
   },
@@ -182,64 +183,65 @@ export const getCurrentUser = async (): Promise<UserData> => {
 };
 
 // Agents
-export const getAgents = async () => {
-  const response = await api.get('/api/agents');
-  return response.data;
+export const getAgents = async (): Promise<Agent[]> => {
+  return api.get('/api/agents').then(response => response.data);
 };
 
-export const createAgent = async (data: Partial<Agent>) => {
-  const response = await api.post('/api/agents', data);
-  return response.data;
+export const createAgent = async (data: Partial<Agent>): Promise<Agent> => {
+  return api.post('/api/agents', data).then(response => response.data);
 };
 
-export const updateAgent = async (id: string, data: Partial<Agent>) => {
-  const response = await api.put(`/api/agents/${id}`, data);
-  return response.data;
+export const updateAgent = async (id: string, data: Partial<Agent>): Promise<Agent> => {
+  return api.put(`/api/agents/${id}`, data).then(response => response.data);
 };
 
-export const deleteAgent = async (id: string) => {
-  const response = await api.delete(`/api/agents/${id}`);
-  return response.data;
+export const deleteAgent = async (id: string): Promise<void> => {
+  return api.delete(`/api/agents/${id}`);
 };
 
 // Projects
-export const getProjects = async () => {
-  const response = await api.get('/api/projects');
-  return response.data;
+export const getProjects = async (): Promise<Project[]> => {
+  return api.get('/api/projects').then(response => response.data);
 };
 
-export const createProject = async (data: Partial<Project>) => {
-  const response = await api.post('/api/projects', data);
-  return response.data;
+export const createProject = async (data: Partial<Project>): Promise<Project> => {
+  return api.post('/api/projects', data).then(response => response.data);
 };
 
-export const updateProject = async (id: string, data: Partial<Project>) => {
-  const response = await api.put(`/api/projects/${id}`, data);
-  return response.data;
+export const updateProject = async (id: string, data: Partial<Project>): Promise<Project> => {
+  return api.put(`/api/projects/${id}`, data).then(response => response.data);
 };
 
-export const deleteProject = async (id: string) => {
-  const response = await api.delete(`/api/projects/${id}`);
-  return response.data;
+export const deleteProject = async (id: string): Promise<void> => {
+  return api.delete(`/api/projects/${id}`);
 };
 
 // Tasks
-export const getTasks = async (projectId: string) => {
+export const getTasks = async (projectId: string): Promise<ProjectTask[]> => {
   const response = await api.get(`/api/projects/${projectId}/tasks`);
   return response.data;
 };
 
-export const createTask = async (projectId: string, data: Partial<ProjectTask>) => {
+export const createTask = async (projectId: string, data: Partial<ProjectTask>): Promise<ProjectTask> => {
   const response = await api.post(`/api/projects/${projectId}/tasks`, data);
   return response.data;
 };
 
-export const updateTask = async (projectId: string, taskId: string, data: Partial<ProjectTask>) => {
+export const updateTask = async (projectId: string, taskId: string, data: Partial<ProjectTask>): Promise<ProjectTask> => {
   const response = await api.put(`/api/projects/${projectId}/tasks/${taskId}`, data);
   return response.data;
 };
 
-export const deleteTask = async (projectId: string, taskId: string) => {
+export const deleteTask = async (projectId: string, taskId: string): Promise<void> => {
   const response = await api.delete(`/api/projects/${projectId}/tasks/${taskId}`);
   return response.data;
+};
+
+// Analytics
+export const getTaskDistribution = async (): Promise<any[]> => {
+  return api.get('/api/analytics/task-distribution').then(response => response.data);
+};
+
+export const getPerformanceData = async (): Promise<any[]> => {
+  return api.get('/api/analytics/performance').then(response => response.data);
 };

@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { useDispatch } from 'react-redux'
-import { updateProject } from '@/store/slices/projectsSlice'
+import { createTask } from '@/store/slices/tasksSlice'
 import { Project, ProjectTask } from '@/types'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
@@ -21,38 +21,35 @@ function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
     tags: '',
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    const newTask: ProjectTask = {
-      id: `task-${Date.now()}`,
-      title: formData.title,
-      description: formData.description,
-      status: 'pending',
-      priority: formData.priority as 'low' | 'medium' | 'high',
-      assignedTo: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      dueDate: formData.dueDate,
-      tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
-      dependencies: [],
-      progress: 0
-    }
+    try {
+      const newTask: Partial<ProjectTask> = {
+        title: formData.title,
+        description: formData.description,
+        status: 'pending',
+        priority: formData.priority as 'low' | 'medium' | 'high',
+        assignedTo: '',
+        dueDate: formData.dueDate,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+        dependencies: [],
+        progress: 0
+      }
 
-    const updatedProject = {
-      ...project,
-      tasks: [...project.tasks, newTask]
+      await dispatch(createTask({ projectId: project.id, task: newTask })).unwrap();
+      onClose();
+      setFormData({
+        title: '',
+        description: '',
+        priority: 'medium',
+        dueDate: '',
+        tags: '',
+      });
+    } catch (error) {
+      console.error('Error creating task:', error);
+      // You might want to show an error message to the user here
     }
-
-    dispatch(updateProject(updatedProject))
-    onClose()
-    setFormData({
-      title: '',
-      description: '',
-      priority: 'medium',
-      dueDate: '',
-      tags: '',
-    })
   }
 
   return (
@@ -94,15 +91,15 @@ function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-                      Task Title
+                      Title
                     </label>
                     <input
                       type="text"
                       id="title"
-                      required
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      required
                     />
                   </div>
 
@@ -112,11 +109,10 @@ function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
                     </label>
                     <textarea
                       id="description"
-                      rows={3}
-                      required
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      rows={3}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     />
                   </div>
 
@@ -126,9 +122,9 @@ function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
                     </label>
                     <select
                       id="priority"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -143,10 +139,9 @@ function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
                     <input
                       type="date"
                       id="dueDate"
-                      required
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={formData.dueDate}
                       onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     />
                   </div>
 
@@ -157,9 +152,9 @@ function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
                     <input
                       type="text"
                       id="tags"
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={formData.tags}
                       onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       placeholder="e.g., frontend, bug, feature"
                     />
                   </div>
@@ -168,15 +163,15 @@ function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
                     <button
                       type="button"
                       onClick={onClose}
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     >
-                      Create Task
+                      Create
                     </button>
                   </div>
                 </form>
