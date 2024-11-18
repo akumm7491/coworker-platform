@@ -1,18 +1,18 @@
-import { useSelector } from 'react-redux'
-import { RootState } from '@/store'
-import { Card } from '@/components/ui/Card'
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { Card } from '@/components/ui/Card';
 import {
   UserCircleIcon,
   EnvelopeIcon,
   UserGroupIcon,
   BriefcaseIcon,
-  CheckCircleIcon
-} from '@heroicons/react/24/outline'
+  CheckCircleIcon,
+} from '@heroicons/react/24/outline';
 
 function Profile() {
-  const { profile } = useSelector((state: RootState) => state.user)
+  const { profile } = useSelector((state: RootState) => state.user);
 
-  if (!profile) return null
+  if (!profile) return null;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -47,9 +47,7 @@ function Profile() {
             </div>
             <div>
               <p className="text-sm text-gray-600">Projects Managed</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {profile.stats.projectsManaged}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{profile.stats.projectsManaged}</p>
             </div>
           </div>
         </Card>
@@ -60,9 +58,7 @@ function Profile() {
             </div>
             <div>
               <p className="text-sm text-gray-600">Agents Supervised</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {profile.stats.agentsSupervised}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{profile.stats.agentsSupervised}</p>
             </div>
           </div>
         </Card>
@@ -73,9 +69,7 @@ function Profile() {
             </div>
             <div>
               <p className="text-sm text-gray-600">Tasks Completed</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {profile.stats.tasksCompleted}
-              </p>
+              <p className="text-2xl font-bold text-gray-900">{profile.stats.tasksCompleted}</p>
             </div>
           </div>
         </Card>
@@ -85,7 +79,7 @@ function Profile() {
         <Card className="p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Teams</h2>
           <div className="space-y-3">
-            {profile.teams.map((team) => (
+            {profile.teams.map(team => (
               <div
                 key={team}
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
@@ -106,17 +100,21 @@ function Profile() {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Notifications</span>
-              <span className={`text-sm font-medium ${
-                profile.preferences.notifications ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <span
+                className={`text-sm font-medium ${
+                  profile.preferences.notifications ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
                 {profile.preferences.notifications ? 'Enabled' : 'Disabled'}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Email Updates</span>
-              <span className={`text-sm font-medium ${
-                profile.preferences.emailUpdates ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <span
+                className={`text-sm font-medium ${
+                  profile.preferences.emailUpdates ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
                 {profile.preferences.emailUpdates ? 'Enabled' : 'Disabled'}
               </span>
             </div>
@@ -124,7 +122,7 @@ function Profile() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
 
-export default Profile
+export default Profile;

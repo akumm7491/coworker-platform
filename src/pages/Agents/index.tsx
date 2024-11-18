@@ -11,7 +11,7 @@ import {
   RocketLaunchIcon,
   CommandLineIcon,
   CpuChipIcon,
-  ChartBarIcon
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 
 const containerVariants = {
@@ -19,9 +19,9 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
-    }
-  }
+      staggerChildren: 0.1,
+    },
+  },
 };
 
 const itemVariants = {
@@ -31,9 +31,9 @@ const itemVariants = {
     y: 0,
     transition: {
       duration: 0.5,
-      ease: "easeOut"
-    }
-  }
+      ease: 'easeOut',
+    },
+  },
 };
 
 const agentTypes = [
@@ -43,16 +43,15 @@ const agentTypes = [
   { value: 'developer', label: 'Developer', icon: CommandLineIcon },
   { value: 'qa', label: 'QA', icon: CpuChipIcon },
   { value: 'devops', label: 'DevOps', icon: CpuChipIcon },
-  { value: 'analytics', label: 'Analytics', icon: ChartBarIcon }
+  { value: 'analytics', label: 'Analytics', icon: ChartBarIcon },
 ];
 
 function Agents() {
   const { agents } = useSelector((state: RootState) => state.agents);
   const [selectedType, setSelectedType] = useState<string>('all');
 
-  const filteredAgents = selectedType === 'all'
-    ? agents
-    : agents.filter(agent => agent.type === selectedType);
+  const filteredAgents =
+    selectedType === 'all' ? agents : agents.filter(agent => agent.type === selectedType);
 
   const handleAssignTask = (agentId: string) => {
     // Implement task assignment logic
@@ -79,9 +78,7 @@ function Agents() {
               <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">
                 Agents
               </h1>
-              <p className="text-lg text-gray-600">
-                Manage your autonomous agents
-              </p>
+              <p className="text-lg text-gray-600">Manage your autonomous agents</p>
             </div>
             <div className="flex items-center space-x-4">
               <motion.div
@@ -91,7 +88,7 @@ function Agents() {
               >
                 <select
                   value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
+                  onChange={e => setSelectedType(e.target.value)}
                   className="appearance-none bg-white/80 backdrop-blur-sm rounded-xl pl-12 pr-10 py-3 shadow-lg border border-gray-200 font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 >
                   {agentTypes.map(type => (
@@ -102,7 +99,7 @@ function Agents() {
                 </select>
                 <FunnelIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-600" />
               </motion.div>
-              
+
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -131,17 +128,15 @@ function Agents() {
                 >
                   <BeakerIcon className="h-12 w-12 text-indigo-600" />
                 </motion.div>
-                <motion.h3 
+                <motion.h3
                   variants={itemVariants}
                   className="text-2xl font-bold text-gray-900 mb-2"
                 >
                   No Agents Found
                 </motion.h3>
-                <motion.p 
-                  variants={itemVariants}
-                  className="text-gray-600 mb-8 max-w-md mx-auto"
-                >
-                  Get started by creating your first agent. Each agent can be assigned specific tasks and roles within your projects.
+                <motion.p variants={itemVariants} className="text-gray-600 mb-8 max-w-md mx-auto">
+                  Get started by creating your first agent. Each agent can be assigned specific
+                  tasks and roles within your projects.
                 </motion.p>
                 <motion.button
                   variants={itemVariants}
@@ -163,15 +158,8 @@ function Agents() {
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
               >
                 {filteredAgents.map(agent => (
-                  <motion.div
-                    key={agent.id}
-                    variants={itemVariants}
-                    layoutId={agent.id}
-                  >
-                    <AgentCard
-                      agent={agent}
-                      onAssignTask={handleAssignTask}
-                    />
+                  <motion.div key={agent.id} variants={itemVariants} layoutId={agent.id}>
+                    <AgentCard agent={agent} onAssignTask={handleAssignTask} />
                   </motion.div>
                 ))}
               </motion.div>

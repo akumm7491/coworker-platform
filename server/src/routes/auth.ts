@@ -1,62 +1,86 @@
-import { Router, RequestHandler } from 'express';
-import { body } from 'express-validator';
-import { register, login, getMe } from '../controllers/auth.js';
-import { protect } from '../middleware/auth.js';
+import { Router, Request, Response, NextFunction } from 'express';
+import { AppDataSource } from '../config/database.js';
+import { User } from '../models/User.js';
+import { createToken, authenticateLogin } from '../middleware/auth.js';
+import { AppError } from '../middleware/error.js';
+import { createLogger } from '../utils/logger.js';
 
+const logger = createLogger('auth-routes');
 const router = Router();
+const userRepository = AppDataSource.getRepository(User);
 
-// Validation middleware
-const registerValidation = [
-  body('name')
-    .trim()
-    .isLength({ min: 2 })
-    .withMessage('Name must be at least 2 characters long')
-    .escape(),
-  body('email')
-    .trim()
-    .isEmail()
-    .withMessage('Please provide a valid email')
-    .normalizeEmail(),
-  body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long')
-    .matches(/[A-Z]/)
-    .withMessage('Password must contain at least one uppercase letter')
-    .matches(/[a-z]/)
-    .withMessage('Password must contain at least one lowercase letter')
-    .matches(/[0-9]/)
-    .withMessage('Password must contain at least one number')
-    .matches(/[^A-Za-z0-9]/)
-    .withMessage('Password must contain at least one special character'),
-  body('confirmPassword')
-    .custom((value, { req }) => {
-      if (value !== req.body.password) {
-        throw new Error('Passwords do not match');
+router.post(
+  '/login',
+  authenticateLogin,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        throw new AppError('Authentication failed', 401);
       }
-      return true;
-    })
-];
 
-const loginValidation = [
-  body('email')
-    .trim()
-    .isEmail()
-    .withMessage('Please provide a valid email')
-    .normalizeEmail(),
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required')
-];
+      const { accessToken, refreshToken } = createToken(user.id);
 
-// Convert async handlers to standard Express handlers
-const asyncHandler = (fn: RequestHandler): RequestHandler => 
-  (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
+      res.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        },
+        tokens: {
+          accessToken,
+          refreshToken,
+        },
+      });
+    } catch (error) {
+      logger.error('Login error:', error);
+      next(error);
+    }
+  },
+);
 
-// Routes
-router.post('/register', registerValidation, asyncHandler(register as RequestHandler));
-router.post('/login', loginValidation, asyncHandler(login as RequestHandler));
-router.get('/me', protect, asyncHandler(getMe as RequestHandler));
+router.post('/register', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, password, name } = req.body;
+
+    // Validate input
+    if (!email || !password || !name) {
+      throw new AppError('Missing required fields', 400);
+    }
+
+    // Check if user already exists
+    const existingUser = await userRepository.findOne({ where: { email } });
+    if (existingUser) {
+      throw new AppError('User already exists', 409);
+    }
+
+    // Create new user
+    const user = new User();
+    user.email = email;
+    user.password = password;
+    user.name = name;
+
+    await userRepository.save(user);
+
+    const { accessToken, refreshToken } = createToken(user.id);
+
+    res.status(201).json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      tokens: {
+        accessToken,
+        refreshToken,
+      },
+    });
+  } catch (error) {
+    logger.error('Registration error:', error);
+    next(error);
+  }
+});
 
 export default router;

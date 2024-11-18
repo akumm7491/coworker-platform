@@ -1,6 +1,6 @@
 import { Fragment, ReactNode } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { animations } from '@/theme/constants';
 
@@ -10,25 +10,23 @@ interface ModalProps {
   title?: string;
   description?: string;
   children: ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  size?: 'sm' | 'md' | 'lg';
 }
 
 const sizeClasses = {
   sm: 'max-w-md',
   md: 'max-w-lg',
   lg: 'max-w-2xl',
-  xl: 'max-w-4xl',
-  full: 'max-w-7xl'
-};
+} as const;
 
-export function Modal({
+export const Modal = ({
   isOpen,
   onClose,
   title,
   description,
   children,
-  size = 'md'
-}: ModalProps) {
+  size = 'md',
+}: ModalProps) => {
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -41,7 +39,7 @@ export function Modal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -56,40 +54,38 @@ export function Modal({
               leaveTo="opacity-0 scale-95"
             >
               <Dialog.Panel
-                className={`
-                  w-full ${sizeClasses[size]} transform overflow-hidden
-                  bg-white/80 backdrop-blur-sm
-                  rounded-2xl p-6 text-left align-middle shadow-xl
-                  transition-all
-                `}
+                className={`w-full ${sizeClasses[size]} transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all`}
               >
                 {title && (
-                  <Dialog.Title
-                    as="h3"
-                    className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600"
-                  >
-                    {title}
+                  <Dialog.Title as="div" className="flex items-center justify-between mb-4">
+                    <motion.div {...animations.slideInFromLeft}>
+                      <h3 className="text-lg font-semibold leading-6 text-gray-900">{title}</h3>
+                      {description && <p className="mt-2 text-sm text-gray-500">{description}</p>}
+                    </motion.div>
+                    <button
+                      onClick={onClose}
+                      className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                    >
+                      <XMarkIcon className="h-6 w-6" />
+                    </button>
                   </Dialog.Title>
                 )}
 
-                {description && (
-                  <Dialog.Description className="mt-2 text-gray-600">
-                    {description}
-                  </Dialog.Description>
-                )}
-
-                <motion.button
-                  whileHover={animations.scale.hover}
-                  whileTap={animations.scale.tap}
-                  onClick={onClose}
-                  className="absolute top-4 right-4 p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                <motion.div
+                  {...animations.fadeIn}
+                  className={title ? undefined : 'flex justify-end'}
                 >
-                  <XMarkIcon className="w-6 h-6 text-gray-500" />
-                </motion.button>
+                  {!title && (
+                    <button
+                      onClick={onClose}
+                      className="mb-4 text-gray-400 hover:text-gray-500 focus:outline-none"
+                    >
+                      <XMarkIcon className="h-6 w-6" />
+                    </button>
+                  )}
+                </motion.div>
 
-                <div className={`${title || description ? 'mt-6' : 'mt-0'}`}>
-                  {children}
-                </div>
+                <motion.div {...animations.fadeIn}>{children}</motion.div>
               </Dialog.Panel>
             </Transition.Child>
           </div>
@@ -97,4 +93,4 @@ export function Modal({
       </Dialog>
     </Transition>
   );
-}
+};

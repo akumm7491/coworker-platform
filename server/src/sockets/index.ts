@@ -1,34 +1,47 @@
-import { Server, Socket } from 'socket.io';
+import { Server as SocketServer } from 'socket.io';
+import { Server } from 'http';
+import { createLogger } from '../utils/logger.js';
 
-export const setupWebSocketHandlers = (io: Server) => {
-  io.on('connection', (socket: Socket) => {
-    console.log('Client connected:', socket.id);
+const logger = createLogger('socket');
+
+interface SocketData {
+  id: string;
+  data: unknown;
+}
+
+export function initializeSocketServer(server: Server): SocketServer {
+  const io = new SocketServer(server, {
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST'],
+    },
+  });
+
+  io.on('connection', socket => {
+    logger.info('Client connected', { id: socket.id });
+
+    socket.on('disconnect', () => {
+      logger.info('Client disconnected', { id: socket.id });
+    });
 
     // Handle agent events
-    socket.on('agent:status', (data) => {
-      // Update agent status and broadcast to all clients
-      io.emit('agents:update', data);
+    socket.on('agent:status', (data: SocketData) => {
+      logger.info('Agent status update', { id: socket.id, data });
+      io.emit('agent:status:update', data);
     });
 
     // Handle project events
-    socket.on('project:update', (data) => {
-      // Update project and broadcast to all clients
-      io.emit('projects:update', data);
+    socket.on('project:update', (data: SocketData) => {
+      logger.info('Project update', { id: socket.id, data });
+      io.emit('project:updated', data);
     });
 
     // Handle task events
-    socket.on('task:update', (data) => {
-      // Update task and broadcast to all clients
-      io.emit('tasks:update', data);
-    });
-
-    socket.on('disconnect', () => {
-      console.log('Client disconnected:', socket.id);
-    });
-
-    // Error handling
-    socket.on('error', (error) => {
-      console.error('Socket error:', error);
+    socket.on('task:update', (data: SocketData) => {
+      logger.info('Task update', { id: socket.id, data });
+      io.emit('task:updated', data);
     });
   });
-};
+
+  return io;
+}

@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store';
 import { createProject } from '@/store/slices/projectsSlice';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
@@ -10,39 +11,42 @@ interface NewProjectModalProps {
 }
 
 function NewProjectModal({ isOpen, onClose }: NewProjectModalProps) {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     requireReview: true,
     autoAssign: true,
-    notifyOnChange: true
+    notifyOnChange: true,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
-      await dispatch(createProject({
-        name: formData.name,
-        description: formData.description,
-        status: 'active',
-        agents: [],
-        tasks: [],
-        integrations: [],
-        environments: [],
-        metrics: {
-          completionRate: 0,
-          taskSuccessRate: 0,
-          timeEfficiency: 0,
-          resourceUtilization: 0
-        },
-        settings: {
-          autoAssign: formData.autoAssign,
-          requireReview: formData.requireReview,
-          notifyOnChange: formData.notifyOnChange
-        }
-      })).unwrap();
+      await dispatch(
+        createProject({
+          name: formData.name,
+          description: formData.description,
+          status: 'active',
+          agents: [],
+          tasks: [],
+          integrations: [],
+          environments: [],
+          metrics: {
+            taskCompletion: 0,
+            agentEfficiency: 0,
+            deploymentFrequency: 0,
+            errorRate: 0,
+            timeToResolution: 0,
+          },
+          settings: {
+            autoAssign: formData.autoAssign,
+            requireReview: formData.requireReview,
+            notifyOnChange: formData.notifyOnChange,
+          },
+        })
+      ).unwrap();
 
       // Reset form and close modal
       setFormData({
@@ -50,7 +54,7 @@ function NewProjectModal({ isOpen, onClose }: NewProjectModalProps) {
         description: '',
         requireReview: true,
         autoAssign: true,
-        notifyOnChange: true
+        notifyOnChange: true,
       });
       onClose();
     } catch (error) {
@@ -59,11 +63,13 @@ function NewProjectModal({ isOpen, onClose }: NewProjectModalProps) {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value, type } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }));
   };
 
@@ -99,10 +105,7 @@ function NewProjectModal({ isOpen, onClose }: NewProjectModalProps) {
                   className="text-lg font-medium leading-6 text-gray-900 flex justify-between items-center"
                 >
                   <span>Create New Project</span>
-                  <button
-                    onClick={onClose}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
+                  <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
                     <XMarkIcon className="h-6 w-6" />
                   </button>
                 </Dialog.Title>
@@ -125,7 +128,10 @@ function NewProjectModal({ isOpen, onClose }: NewProjectModalProps) {
                     </div>
 
                     <div>
-                      <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                      <label
+                        htmlFor="description"
+                        className="block text-sm font-medium text-gray-700"
+                      >
                         Description
                       </label>
                       <textarea
@@ -176,7 +182,10 @@ function NewProjectModal({ isOpen, onClose }: NewProjectModalProps) {
                           onChange={handleChange}
                           className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                         />
-                        <label htmlFor="notifyOnChange" className="ml-2 block text-sm text-gray-700">
+                        <label
+                          htmlFor="notifyOnChange"
+                          className="ml-2 block text-sm text-gray-700"
+                        >
                           Notify on changes
                         </label>
                       </div>

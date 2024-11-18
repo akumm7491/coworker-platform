@@ -1,13 +1,13 @@
-import { useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { Project, Agent } from '@/types'
-import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
-import { RootState } from '@/store'
-import { updateProject } from '@/store/slices/projectsSlice'
-import { updateAgent } from '@/store/slices/agentsSlice'
-import NewAgentModal from '@/components/projects/NewAgentModal'
-import EditAgentModal from '@/components/projects/EditAgentModal'
+import { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store';
+import { Project, Agent } from '@/types';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { updateProject } from '@/store/slices/projectsSlice';
+import { updateAgent } from '@/store/slices/agentsSlice';
+import NewAgentModal from '@/components/projects/NewAgentModal';
+import EditAgentModal from '@/components/projects/EditAgentModal';
 import {
   PlusIcon,
   PauseIcon,
@@ -15,45 +15,55 @@ import {
   TrashIcon,
   ChartBarIcon,
   ClipboardDocumentListIcon,
-  PencilIcon
-} from '@heroicons/react/24/outline'
+  PencilIcon,
+} from '@heroicons/react/24/outline';
 
 interface AgentAssignmentsProps {
-  project: Project
+  project: Project;
 }
 
 function AgentAssignments({ project }: AgentAssignmentsProps) {
-  const dispatch = useDispatch()
-  const { agents } = useSelector((state: RootState) => state.agents)
-  const [isNewAgentModalOpen, setIsNewAgentModalOpen] = useState(false)
-  const [agentToEdit, setAgentToEdit] = useState<Agent | null>(null)
-  const [showPerformance, setShowPerformance] = useState<string | null>(null)
+  const dispatch = useDispatch<AppDispatch>();
+  const { agents } = useSelector((state: RootState) => state.agents);
+  const [isNewAgentModalOpen, setIsNewAgentModalOpen] = useState(false);
+  const [agentToEdit, setAgentToEdit] = useState<Agent | null>(null);
+  const [showPerformance, setShowPerformance] = useState<string | null>(null);
 
-  const projectAgents = agents.filter(agent => project.agents.includes(agent.id))
+  const projectAgents = agents.filter(agent => project.agents.includes(agent.id));
 
   const handleRemoveAgent = (agentId: string) => {
     const updatedProject = {
       ...project,
-      agents: project.agents.filter(id => id !== agentId)
-    }
+      agents: project.agents.filter(id => id !== agentId),
+    };
     dispatch(updateProject(updatedProject))
-  }
+      .unwrap()
+      .catch((error: Error) => {
+        console.error('Failed to update project:', error);
+      });
+  };
 
   const handleToggleAgentStatus = (agent: Agent) => {
-    const newStatus = agent.status === 'working' ? 'idle' : 'working'
-    dispatch(updateAgent({
-      ...agent,
-      status: newStatus
-    }))
-  }
+    const newStatus = agent.status === 'working' ? 'idle' : 'working';
+    dispatch(
+      updateAgent({
+        ...agent,
+        status: newStatus,
+      })
+    )
+      .unwrap()
+      .catch((error: Error) => {
+        console.error('Failed to update agent status:', error);
+      });
+  };
 
   const handleEditAgent = (agent: Agent) => {
-    setAgentToEdit(agent)
-  }
+    setAgentToEdit(agent);
+  };
 
   const handleCloseEditModal = () => {
-    setAgentToEdit(null)
-  }
+    setAgentToEdit(null);
+  };
 
   const renderPerformanceStats = (agent: Agent) => (
     <div className="mt-4 space-y-4">
@@ -71,7 +81,7 @@ function AgentAssignments({ project }: AgentAssignmentsProps) {
           <p className="text-lg font-semibold">{agent.performance.averageTime}s</p>
         </div>
       </div>
-      
+
       <div className="space-y-2">
         <p className="text-sm font-medium text-gray-700">Capabilities:</p>
         <div className="flex flex-wrap gap-2">
@@ -107,16 +117,14 @@ function AgentAssignments({ project }: AgentAssignmentsProps) {
           </button>
         </div>
         <div className="mt-2 space-y-1">
-          <p className="text-sm text-gray-600">
-            Learning Rate: {agent.learningRate || 1.0}
-          </p>
+          <p className="text-sm text-gray-600">Learning Rate: {agent.learningRate || 1.0}</p>
           <p className="text-sm text-gray-600">
             Max Concurrent Tasks: {agent.maxConcurrentTasks || 3}
           </p>
         </div>
       </div>
     </div>
-  )
+  );
 
   return (
     <div className="space-y-6">
@@ -137,7 +145,7 @@ function AgentAssignments({ project }: AgentAssignmentsProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {projectAgents.map((agent) => (
+        {projectAgents.map(agent => (
           <Card key={agent.id} className="p-4">
             <div className="flex justify-between items-start">
               <div>
@@ -148,7 +156,7 @@ function AgentAssignments({ project }: AgentAssignmentsProps) {
             </div>
 
             <p className="text-sm text-gray-600 mt-2">{agent.description}</p>
-            
+
             <div className="mt-4 flex justify-between items-center">
               <div className="flex space-x-2">
                 <button
@@ -206,14 +214,10 @@ function AgentAssignments({ project }: AgentAssignmentsProps) {
       />
 
       {agentToEdit && (
-        <EditAgentModal
-          isOpen={!!agentToEdit}
-          onClose={handleCloseEditModal}
-          agent={agentToEdit}
-        />
+        <EditAgentModal isOpen={!!agentToEdit} onClose={handleCloseEditModal} agent={agentToEdit} />
       )}
     </div>
-  )
+  );
 }
 
-export default AgentAssignments
+export default AgentAssignments;

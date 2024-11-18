@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { ProjectTask } from '@/types';
-import * as api from '@/services/api';
+import { ProjectTask } from '@/types/task';
+import api from '@/services/api';
 
 interface TasksState {
   tasks: ProjectTask[];
@@ -11,20 +11,17 @@ interface TasksState {
 const initialState: TasksState = {
   tasks: [],
   loading: false,
-  error: null
+  error: null,
 };
 
-export const fetchTasks = createAsyncThunk(
-  'tasks/fetchTasks',
-  async (projectId: string) => {
-    try {
-      return await api.getTasks(projectId);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      throw error;
-    }
+export const fetchTasks = createAsyncThunk('tasks/fetchTasks', async (projectId: string) => {
+  try {
+    return await api.getTasks(projectId);
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+    throw error;
   }
-);
+});
 
 export const createTask = createAsyncThunk(
   'tasks/createTask',
@@ -40,7 +37,15 @@ export const createTask = createAsyncThunk(
 
 export const updateTask = createAsyncThunk(
   'tasks/updateTask',
-  async ({ projectId, taskId, data }: { projectId: string; taskId: string; data: Partial<ProjectTask> }) => {
+  async ({
+    projectId,
+    taskId,
+    data,
+  }: {
+    projectId: string;
+    taskId: string;
+    data: Partial<ProjectTask>;
+  }) => {
     try {
       return await api.updateTask(projectId, taskId, data);
     } catch (error) {
@@ -67,9 +72,9 @@ const tasksSlice = createSlice({
   name: 'tasks',
   initialState,
   reducers: {},
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
-      .addCase(fetchTasks.pending, (state) => {
+      .addCase(fetchTasks.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -81,7 +86,7 @@ const tasksSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch tasks';
       })
-      .addCase(createTask.pending, (state) => {
+      .addCase(createTask.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -93,22 +98,21 @@ const tasksSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || 'Failed to create task';
       })
-      .addCase(updateTask.pending, (state) => {
+      .addCase(updateTask.pending, state => {
         state.loading = true;
         state.error = null;
       })
       .addCase(updateTask.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.tasks.findIndex(task => task.id === action.payload.id);
-        if (index !== -1) {
-          state.tasks[index] = action.payload;
-        }
+        state.tasks = state.tasks.map(task =>
+          task.id === action.payload.id ? action.payload : task
+        );
       })
       .addCase(updateTask.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to update task';
       })
-      .addCase(deleteTask.pending, (state) => {
+      .addCase(deleteTask.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -120,7 +124,7 @@ const tasksSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || 'Failed to delete task';
       });
-  }
+  },
 });
 
 export default tasksSlice.reducer;

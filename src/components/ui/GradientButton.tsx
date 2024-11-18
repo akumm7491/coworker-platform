@@ -1,23 +1,24 @@
-import { motion } from 'framer-motion'
-import { ReactNode } from 'react'
+import { motion } from 'framer-motion';
+import { ReactNode } from 'react';
 
 interface GradientButtonProps {
-  children: ReactNode
-  onClick?: () => void
-  className?: string
-  variant?: 'primary' | 'secondary'
+  children: ReactNode;
+  onClick?: () => void;
+  className?: string;
+  variant?: 'primary' | 'secondary';
 }
 
 export function GradientButton({
   children,
   onClick,
   className = '',
-  variant = 'primary'
+  variant = 'primary',
 }: GradientButtonProps) {
-  const baseStyles = "relative px-8 py-3 rounded-xl font-medium overflow-hidden"
-  const variantStyles = variant === 'primary'
-    ? "gradient-button text-white"
-    : "bg-white text-gray-900 border border-gray-200 hover:border-gray-300"
+  const baseStyles = 'relative px-8 py-3 rounded-xl font-medium overflow-hidden';
+  const variantStyles =
+    variant === 'primary'
+      ? 'gradient-button text-white'
+      : 'bg-white text-gray-900 border border-gray-200 hover:border-gray-300';
 
   return (
     <motion.button
@@ -29,5 +30,5 @@ export function GradientButton({
       <span className="relative z-10">{children}</span>
       <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-blue-600/20 to-indigo-600/20 blur-xl" />
     </motion.button>
-  )
+  );
 }

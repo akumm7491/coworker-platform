@@ -1,72 +1,62 @@
 import React, { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import {
-  SparklesIcon,
-  BoltIcon,
-  BeakerIcon,
-  RocketLaunchIcon,
-  LightBulbIcon,
-  CircleStackIcon,
-  ShieldCheckIcon,
-  CpuChipIcon,
-} from '@heroicons/react/24/outline';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store';
+import { SparklesIcon, BoltIcon, BeakerIcon } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
 import { ParticleBackground } from '@/components/ui/ParticleBackground';
 import { FeatureCard } from '@/components/ui/FeatureCard';
 import { TypedText } from '@/components/ui/TypedText';
 import { InteractiveDemo } from '@/components/sections/InteractiveDemo';
 import { SocialProof } from '@/components/sections/SocialProof';
 import { CallToAction } from '@/components/sections/CallToAction';
+import { LoginModal } from '@/components/auth/LoginModal';
+import { SignupModal } from '@/components/auth/SignupModal';
 import { useAuth } from '@/contexts/AuthContext';
 
 const features = [
   {
     icon: SparklesIcon,
     title: 'AI-Powered Automation',
-    description: 'Intelligent agents that learn and adapt to your development workflow, making decisions in real-time.',
-    color: 'from-[#2563eb] to-[#7c3aed]'
+    description:
+      'Intelligent agents that learn and adapt to your development workflow, making decisions in real-time.',
+    color: 'from-[#2563eb] to-[#7c3aed]',
   },
   {
     icon: BoltIcon,
     title: 'Real-time Collaboration',
-    description: 'Work seamlessly with your team and AI agents in real-time, enhancing productivity and creativity.',
-    color: 'from-[#7c3aed] to-[#06b6d4]'
+    description:
+      'Work seamlessly with your team and AI agents in real-time, enhancing productivity and creativity.',
+    color: 'from-[#7c3aed] to-[#06b6d4]',
   },
   {
     icon: BeakerIcon,
     title: 'Continuous Learning',
-    description: 'Agents that continuously learn from your feedback and adapt to your specific needs and preferences.',
-    color: 'from-[#06b6d4] to-[#2563eb]'
-  }
+    description:
+      'Agents that continuously learn from your feedback and adapt to your specific needs and preferences.',
+    color: 'from-[#06b6d4] to-[#2563eb]',
+  },
 ];
 
-const typedWords = [
-  'AI Development',
-  'Pair Programming',
-  'Code Generation',
-  'Team Collaboration'
-];
+const typedWords = ['AI Development', 'Pair Programming', 'Code Generation', 'Team Collaboration'];
 
 function Landing() {
   const targetRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
   const { scrollYProgress } = useScroll({
     target: targetRef,
-    offset: ['start start', 'end start']
+    offset: ['start start', 'end start'],
   });
 
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
   const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.8]);
-  const position = useTransform(scrollYProgress, (pos) => {
+  const position = useTransform(scrollYProgress, pos => {
     return pos === 1 ? 'relative' : 'fixed';
   });
 
-  const { openSignup } = useAuth();
-  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const { isAuthenticated, openSignup, isLoginOpen, isSignupOpen, closeModals } = useAuth();
 
   const handleGetStarted = () => {
     if (isAuthenticated) {
-      window.location.href = '/dashboard';
+      navigate('/dashboard');
     } else {
       openSignup();
     }
@@ -97,61 +87,51 @@ function Landing() {
                 />
               </h1>
               <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-                Experience the next generation of software development with AI agents that understand,
-                learn, and collaborate with your team in real-time.
+                Experience the next generation of software development with AI agents that
+                understand, learn, and collaborate with your team in real-time.
               </p>
             </motion.div>
 
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex justify-center gap-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
             >
               <button
                 onClick={handleGetStarted}
-                className="px-8 py-4 bg-gradient-to-r from-[#2563eb] to-[#7c3aed] rounded-lg font-semibold text-lg hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-[#7c3aed]/20"
+                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
               >
-                {isAuthenticated ? 'Go to Dashboard' : 'Get Started Free'}
-              </button>
-              <button className="px-8 py-4 border-2 border-[#7c3aed] rounded-lg font-semibold text-lg hover:bg-[#7c3aed]/10 transition-all duration-300">
-                Watch Demo
+                Get Started
               </button>
             </motion.div>
           </div>
         </motion.div>
       </div>
 
-      {/* Features Section */}
-      <div className="py-24 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0f172a] via-[#1e293b] to-[#0f172a] opacity-50" />
-        <div className="container mx-auto px-4 relative">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center max-w-3xl mx-auto mb-20"
-          >
-            <h2 className="text-4xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
-              Supercharge Your Development
-            </h2>
-            <p className="text-xl text-gray-300">
-              Our platform combines cutting-edge AI technology with intuitive design to transform
-              your development workflow.
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-8">
+      <div className="relative z-10 bg-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <FeatureCard key={feature.title} {...feature} delay={index * 0.1} />
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.2 }}
+                viewport={{ once: true }}
+              >
+                <FeatureCard {...feature} />
+              </motion.div>
             ))}
           </div>
         </div>
+
+        <InteractiveDemo />
+        <SocialProof />
+        <CallToAction onGetStarted={handleGetStarted} />
       </div>
 
-      <InteractiveDemo />
-      <SocialProof />
-      <CallToAction />
+      {isLoginOpen && <LoginModal onClose={closeModals} />}
+      {isSignupOpen && <SignupModal onClose={closeModals} />}
     </div>
   );
 }

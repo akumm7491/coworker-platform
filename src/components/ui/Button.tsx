@@ -1,8 +1,10 @@
-import { motion } from 'framer-motion';
+import { motion, MotionProps } from 'framer-motion';
 import { colors, animations } from '@/theme/constants';
 import { ReactNode } from 'react';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, keyof MotionProps>,
+    MotionProps {
   variant?: 'primary' | 'success' | 'warning' | 'error' | 'neutral';
   size?: 'sm' | 'md' | 'lg';
   leftIcon?: ReactNode;
@@ -14,7 +16,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 const sizeClasses = {
   sm: 'px-3 py-2 text-sm',
   md: 'px-6 py-3 text-base',
-  lg: 'px-8 py-4 text-lg'
+  lg: 'px-8 py-4 text-lg',
 };
 
 export function Button({

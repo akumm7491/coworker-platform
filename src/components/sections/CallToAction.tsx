@@ -17,10 +17,10 @@ const plans = [
       'Community support',
       'Standard response time',
       'Public repositories',
-      'Basic analytics'
+      'Basic analytics',
     ],
     cta: 'Get Started',
-    color: 'from-[#2563eb] to-[#7c3aed]'
+    color: 'from-[#2563eb] to-[#7c3aed]',
   },
   {
     name: 'Pro',
@@ -33,11 +33,11 @@ const plans = [
       'Priority support',
       'Custom workflows',
       'Team collaboration',
-      'API access'
+      'API access',
     ],
     cta: 'Start Free Trial',
     color: 'from-[#7c3aed] to-[#06b6d4]',
-    popular: true
+    popular: true,
   },
   {
     name: 'Enterprise',
@@ -49,14 +49,14 @@ const plans = [
       'SLA guarantees',
       'Advanced security',
       'Custom integrations',
-      'Training & onboarding'
+      'Training & onboarding',
     ],
     cta: 'Contact Sales',
-    color: 'from-[#06b6d4] to-[#2563eb]'
-  }
+    color: 'from-[#06b6d4] to-[#2563eb]',
+  },
 ];
 
-export function CallToAction() {
+export function CallToAction({ onGetStarted }: { onGetStarted?: () => void }) {
   const { openSignup } = useAuth();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
@@ -73,7 +73,11 @@ export function CallToAction() {
       case 'Start Free Trial':
       case 'Get Started':
       default:
-        openSignup();
+        if (onGetStarted) {
+          onGetStarted();
+        } else {
+          openSignup();
+        }
         break;
     }
   };
@@ -85,8 +89,6 @@ export function CallToAction() {
         <SectionHeading
           title="Simple, transparent pricing"
           subtitle="Choose the plan that's right for you"
-          centered
-          light
         />
 
         <div className="mx-auto mt-16 grid max-w-lg grid-cols-1 items-stretch gap-8 sm:mt-20 lg:max-w-none lg:grid-cols-3">
@@ -112,7 +114,9 @@ export function CallToAction() {
               <div className="p-8 flex-grow">
                 <div className="flex flex-col h-full">
                   <div>
-                    <h3 className={`text-xl font-bold bg-gradient-to-r ${plan.color} bg-clip-text text-transparent`}>
+                    <h3
+                      className={`text-xl font-bold bg-gradient-to-r ${plan.color} bg-clip-text text-transparent`}
+                    >
                       {plan.name}
                     </h3>
                     <p className="mt-4 text-sm text-gray-400">{plan.description}</p>
@@ -123,18 +127,20 @@ export function CallToAction() {
                       )}
                     </div>
                   </div>
-                  
+
                   <ul role="list" className="mt-8 space-y-3 text-sm text-gray-300 flex-grow">
-                    {plan.features.map((feature) => (
+                    {plan.features.map(feature => (
                       <li key={feature} className="flex gap-x-3 items-start">
-                        <CheckIcon className={`h-5 w-5 flex-none bg-gradient-to-r ${plan.color} bg-clip-text`} />
+                        <CheckIcon
+                          className={`h-5 w-5 flex-none bg-gradient-to-r ${plan.color} bg-clip-text`}
+                        />
                         <span>{feature}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               </div>
-              
+
               <div className="p-8 pt-0">
                 <motion.button
                   onClick={() => handleAction(plan.cta)}

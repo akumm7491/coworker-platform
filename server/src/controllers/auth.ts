@@ -1,70 +1,82 @@
 import { Request, Response } from 'express';
-import { User, IUser } from '../models/User.js';
-import { createToken } from '../middleware/auth.js';
 import { validationResult } from 'express-validator';
-import mongoose from 'mongoose';
+import { AppError } from '../middleware/error.js';
+import { createLogger } from '../utils/logger.js';
+import { UserRepository } from '../repositories/UserRepository.js';
+import { AppDataSource } from '../config/database.js';
+import { createToken } from '../middleware/auth.js';
+import { UserProvider } from '../models/User.js';
+
+const logger = createLogger('auth-controller');
 
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('Register request received:', req.body);
+    logger.info('Register request received:', { body: req.body });
 
     // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('Validation errors:', errors.array());
-      res.status(400).json({
-        success: false,
-        errors: errors.array()
-      });
-      return;
+      logger.warn('Validation errors:', { errors: errors.array() });
+      const validationErrors = errors.array().map(error => error.msg);
+      throw new AppError(validationErrors[0], 400);
     }
 
-    const { name, email, password } = req.body as { name: string; email: string; password: string };
+    const { name, email, password } = req.body;
+    const userRepository = AppDataSource.getCustomRepository(UserRepository);
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email }).select('+password');
+    const existingUser = await userRepository.findByEmail(email);
     if (existingUser) {
-      console.log('User already exists:', email);
-      res.status(400).json({
-        success: false,
-        error: 'User already exists'
-      });
-      return;
+      logger.warn('User already exists:', { email });
+      throw new AppError('User already exists', 400);
     }
 
-    console.log('Creating new user:', { name, email });
+    logger.info('Creating new user:', { name, email });
 
     // Create user
-    const user = await User.create({
+    const user = await userRepository.createUser({
       name,
       email,
-      password
+      password,
+      provider: UserProvider.LOCAL,
     });
 
-    // Create token
-    const token = createToken(user._id.toString());
+    // Create tokens
+    const tokens = createToken(user.id);
 
-    console.log('User created successfully:', { id: user._id, name: user.name, email: user.email });
+    logger.info('User created successfully:', {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    });
 
+    // Return user data and tokens
     res.status(201).json({
       success: true,
-      token,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
-        email: user.email
-      }
+        email: user.email,
+      },
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     });
   } catch (error) {
-    console.error('Register error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-    res.status(500).json({
-      success: false,
-      error: errorMessage
-    });
+    logger.error('Register error:', error);
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        error: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: 'Registration failed. Please try again.',
+      });
+    }
   }
 };
 
@@ -73,64 +85,57 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 // @access  Public
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('Login request received:', { email: req.body.email });
+    logger.info('Login request received:', { email: req.body.email });
 
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      console.log('Validation errors:', errors.array());
-      res.status(400).json({
-        success: false,
-        errors: errors.array()
-      });
-      return;
-    }
+    const { email, password } = req.body;
+    const userRepository = AppDataSource.getCustomRepository(UserRepository);
 
-    const { email, password } = req.body as { email: string; password: string };
-
-    // Check if user exists
-    const user = await User.findOne({ email }).select('+password') as IUser | null;
+    // Find user
+    const user = await userRepository.findByEmail(email);
     if (!user) {
-      console.log('User not found:', email);
-      res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      });
-      return;
+      logger.warn('User not found:', { email });
+      throw new AppError('Invalid email or password', 401);
     }
 
-    // Check if password matches
+    // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      console.log('Password does not match for user:', email);
-      res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      });
-      return;
+      logger.warn('Invalid password:', { email });
+      throw new AppError('Invalid email or password', 401);
     }
 
-    // Create token
-    const token = createToken(user._id.toString());
+    // Update last login
+    user.updateLastLogin();
+    await userRepository.save(user);
 
-    console.log('User logged in successfully:', { id: user._id, name: user.name, email: user.email });
+    // Create tokens
+    const tokens = createToken(user.id);
 
-    res.status(200).json({
+    logger.info('User logged in successfully:', { id: user.id, email: user.email });
+
+    res.json({
       success: true,
-      token,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
-        email: user.email
-      }
+        email: user.email,
+      },
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     });
   } catch (error) {
-    console.error('Login error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-    res.status(500).json({
-      success: false,
-      error: errorMessage
-    });
+    logger.error('Login error:', error);
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        error: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: 'Login failed. Please try again.',
+      });
+    }
   }
 };
 
@@ -139,40 +144,37 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 // @access  Private
 export const getMe = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('Get current user request received');
-
-    if (!req.user?.id) {
-      res.status(401).json({
-        success: false,
-        error: 'Not authorized'
-      });
-      return;
+    if (!req.user) {
+      throw new AppError('Authentication required', 401);
     }
 
-    const userId = new mongoose.Types.ObjectId(req.user.id);
-    const user = await User.findById(userId);
+    const userRepository = AppDataSource.getCustomRepository(UserRepository);
+    const user = await userRepository.findById(req.user.id);
+
     if (!user) {
-      res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
-      return;
+      throw new AppError('User not found', 404);
     }
 
     res.json({
       success: true,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
-        email: user.email
-      }
+        email: user.email,
+      },
     });
   } catch (error) {
-    console.error('GetMe error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-    res.status(500).json({
-      success: false,
-      error: errorMessage
-    });
+    logger.error('Get me error:', error);
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        error: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get user data. Please try again.',
+      });
+    }
   }
 };

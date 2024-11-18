@@ -1,12 +1,12 @@
-import { motion } from 'framer-motion'
-import { ArrowUpIcon } from '@heroicons/react/24/outline'
+import { motion } from 'framer-motion';
+import { ArrowUpIcon } from '@heroicons/react/24/outline';
 
 interface StatCardProps {
-  label: string
-  value: string
-  description: string
-  increase: string
-  delay?: number
+  label: string;
+  value: string;
+  description: string;
+  increase: string;
+  delay?: number;
 }
 
 export function StatCard({ label, value, description, increase, delay = 0 }: StatCardProps) {
@@ -19,9 +19,7 @@ export function StatCard({ label, value, description, increase, delay = 0 }: Sta
       className="stat-card p-6"
     >
       <div className="flex justify-between items-start mb-4">
-        <div className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-          {label}
-        </div>
+        <div className="text-sm font-medium text-gray-500 uppercase tracking-wide">{label}</div>
         <div className="flex items-center px-2 py-1 bg-green-50 rounded-full">
           <ArrowUpIcon className="w-3 h-3 text-green-500 mr-1" />
           <span className="text-xs font-medium text-green-600">{increase}</span>
@@ -36,5 +34,5 @@ export function StatCard({ label, value, description, increase, delay = 0 }: Sta
       </div>
       <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-tl-full" />
     </motion.div>
-  )
+  );
 }

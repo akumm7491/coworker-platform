@@ -1,41 +1,45 @@
-import { Fragment, useState } from 'react'
-import { Dialog, Transition } from '@headlessui/react'
-import { useDispatch } from 'react-redux'
-import { createTask } from '@/store/slices/tasksSlice'
-import { Project, ProjectTask } from '@/types'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { Fragment, useState } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
+import { useDispatch } from 'react-redux';
+import { createTask } from '@/store/slices/tasksSlice';
+import { Project, ProjectTask } from '@/types';
+import { AppDispatch } from '@/store';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface NewTaskModalProps {
-  isOpen: boolean
-  onClose: () => void
-  project: Project
+  isOpen: boolean;
+  onClose: () => void;
+  project: Project;
 }
 
-function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
-  const dispatch = useDispatch()
+const NewTaskModal = ({ isOpen, onClose, project }: NewTaskModalProps) => {
+  const dispatch = useDispatch<AppDispatch>();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     priority: 'medium',
     dueDate: '',
     tags: '',
-  })
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     try {
       const newTask: Partial<ProjectTask> = {
         title: formData.title,
         description: formData.description,
         status: 'pending',
         priority: formData.priority as 'low' | 'medium' | 'high',
-        assignedTo: '',
+        assigneeId: '',
         dueDate: formData.dueDate,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+        tags: formData.tags
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(Boolean),
         dependencies: [],
-        progress: 0
-      }
+        progress: 0,
+      };
 
       await dispatch(createTask({ projectId: project.id, task: newTask })).unwrap();
       onClose();
@@ -50,7 +54,7 @@ function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
       console.error('Error creating task:', error);
       // You might want to show an error message to the user here
     }
-  }
+  };
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -97,20 +101,23 @@ function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
                       type="text"
                       id="title"
                       value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      onChange={e => setFormData({ ...formData, title: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       required
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="description"
+                      className="block text-sm font-medium text-gray-700"
+                    >
                       Description
                     </label>
                     <textarea
                       id="description"
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onChange={e => setFormData({ ...formData, description: e.target.value })}
                       rows={3}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     />
@@ -123,7 +130,7 @@ function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
                     <select
                       id="priority"
                       value={formData.priority}
-                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                      onChange={e => setFormData({ ...formData, priority: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     >
                       <option value="low">Low</option>
@@ -140,7 +147,7 @@ function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
                       type="date"
                       id="dueDate"
                       value={formData.dueDate}
-                      onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                      onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     />
                   </div>
@@ -153,7 +160,7 @@ function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
                       type="text"
                       id="tags"
                       value={formData.tags}
-                      onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                      onChange={e => setFormData({ ...formData, tags: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       placeholder="e.g., frontend, bug, feature"
                     />
@@ -181,7 +188,7 @@ function NewTaskModal({ isOpen, onClose, project }: NewTaskModalProps) {
         </div>
       </Dialog>
     </Transition>
-  )
-}
+  );
+};
 
-export default NewTaskModal
+export default NewTaskModal;

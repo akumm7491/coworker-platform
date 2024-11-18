@@ -1,17 +1,17 @@
-import { motion } from 'framer-motion'
-import { GradientButton } from './GradientButton'
-import { CheckIcon } from '@heroicons/react/24/outline'
-import { useAuth } from '@/contexts/AuthContext'
-import { useSelector } from 'react-redux'
-import { RootState } from '@/store'
+import { motion } from 'framer-motion';
+import { GradientButton } from './GradientButton';
+import { CheckIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store';
 
 interface PricingCardProps {
-  name: string
-  price: string
-  description: string
-  features: string[]
-  isPopular?: boolean
-  delay?: number
+  name: string;
+  price: string;
+  description: string;
+  features: string[];
+  isPopular?: boolean;
+  delay?: number;
 }
 
 export function PricingCard({
@@ -20,7 +20,7 @@ export function PricingCard({
   description,
   features,
   isPopular = false,
-  delay = 0
+  delay = 0,
 }: PricingCardProps) {
   const { openSignup } = useAuth();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
@@ -39,9 +39,7 @@ export function PricingCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay }}
-      className={`${
-        isPopular ? 'pricing-card-popular glow' : 'pricing-card'
-      } p-8 relative`}
+      className={`${isPopular ? 'pricing-card-popular glow' : 'pricing-card'} p-8 relative`}
     >
       {isPopular && (
         <div className="absolute top-0 right-6 transform -translate-y-1/2">
@@ -76,5 +74,5 @@ export function PricingCard({
         </GradientButton>
       </div>
     </motion.div>
-  )
+  );
 }

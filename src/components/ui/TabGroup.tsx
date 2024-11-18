@@ -14,22 +14,23 @@ interface TabGroupProps {
 }
 
 export function TabGroup({ tabs, children, variant = 'primary' }: TabGroupProps) {
-  const baseColors = variant === 'primary'
-    ? {
-        selected: 'bg-gradient-to-r from-indigo-600 to-purple-600',
-        hover: 'hover:text-gray-800 hover:bg-white',
-        text: 'text-gray-600'
-      }
-    : {
-        selected: 'bg-gradient-to-r from-gray-700 to-slate-700',
-        hover: 'hover:text-gray-800 hover:bg-white',
-        text: 'text-gray-600'
-      };
+  const baseColors =
+    variant === 'primary'
+      ? {
+          selected: 'bg-gradient-to-r from-indigo-600 to-purple-600',
+          hover: 'hover:text-gray-800 hover:bg-white',
+          text: 'text-gray-600',
+        }
+      : {
+          selected: 'bg-gradient-to-r from-gray-700 to-slate-700',
+          hover: 'hover:text-gray-800 hover:bg-white',
+          text: 'text-gray-600',
+        };
 
   return (
     <Tab.Group>
       <Tab.List className="flex space-x-2 rounded-xl bg-white/50 backdrop-blur-sm p-2 shadow-lg">
-        {tabs.map((tab) => (
+        {tabs.map(tab => (
           <Tab
             key={tab.name}
             className={({ selected }) =>

@@ -1,162 +1,178 @@
-import { Router, Request, Response, NextFunction } from 'express';
-import type { Project, ProjectTask } from '../types/shared.js';
-import { v4 as uuidv4 } from 'uuid';
-import { AppError } from '../middleware/error.js';
+import { Router } from 'express';
+import { AppDataSource } from '../config/database.js';
+import { FindOptionsWhere } from 'typeorm';
+import { Project, ProjectStatus } from '../models/Project.js';
+import { createLogger } from '../utils/logger.js';
+import { AsyncRouteHandler } from '../types/route-handler.js';
+import { protect } from '../middleware/auth.js';
+import { User } from '../models/User.js';
 
+const logger = createLogger('project-routes');
 const router = Router();
+const projectRepository = AppDataSource.getRepository(Project);
 
-// In-memory store for development
-let projects: Project[] = [
-  {
-    id: uuidv4(),
-    name: "Project Alpha",
-    description: "AI-driven automation system",
-    status: "in_progress",
-    completion: 75,
-    agents_assigned: [],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    tasks: []
-  }
-];
-
-// Get all projects
-router.get('/', (_req: Request, res: Response) => {
-  res.json(projects);
-});
-
-// Get project by ID
-router.get('/:id', (req: Request, res: Response, next: NextFunction) => {
-  const project = projects.find(p => p.id === req.params.id);
-  if (!project) {
-    return next(new AppError(404, 'Project not found'));
-  }
-  res.json(project);
-});
-
-// Create new project
-router.post('/', (req: Request, res: Response, next: NextFunction) => {
+// GET /api/projects
+const getProjects: AsyncRouteHandler = async (req, res) => {
   try {
-    const newProject: Project = {
-      id: uuidv4(),
-      ...req.body,
-      tasks: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    projects.push(newProject);
-    res.status(201).json(newProject);
-  } catch (error) {
-    next(new AppError(400, 'Invalid project data'));
-  }
-});
-
-// Update project
-router.put('/:id', (req: Request, res: Response, next: NextFunction) => {
-  const index = projects.findIndex(p => p.id === req.params.id);
-  if (index === -1) {
-    return next(new AppError(404, 'Project not found'));
-  }
-
-  try {
-    const updatedProject = {
-      ...projects[index],
-      ...req.body,
-      updated_at: new Date().toISOString()
-    };
-    projects[index] = updatedProject;
-    res.json(updatedProject);
-  } catch (error) {
-    next(new AppError(400, 'Invalid project data'));
-  }
-});
-
-// Delete project
-router.delete('/:id', (req: Request, res: Response, next: NextFunction) => {
-  const index = projects.findIndex(p => p.id === req.params.id);
-  if (index === -1) {
-    return next(new AppError(404, 'Project not found'));
-  }
-
-  projects.splice(index, 1);
-  res.status(204).send();
-});
-
-// Task Routes
-
-// Get all tasks for a project
-router.get('/:projectId/tasks', (req: Request, res: Response, next: NextFunction) => {
-  const project = projects.find(p => p.id === req.params.projectId);
-  if (!project) {
-    return next(new AppError(404, 'Project not found'));
-  }
-  res.json(project.tasks || []);
-});
-
-// Create new task
-router.post('/:projectId/tasks', (req: Request, res: Response, next: NextFunction) => {
-  const project = projects.find(p => p.id === req.params.projectId);
-  if (!project) {
-    return next(new AppError(404, 'Project not found'));
-  }
-
-  try {
-    const newTask: ProjectTask = {
-      id: uuidv4(),
-      ...req.body,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    if (!project.tasks) {
-      project.tasks = [];
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
-    project.tasks.push(newTask);
-    res.status(201).json(newTask);
+
+    const projects = await projectRepository.find({
+      where: { ownerId: (req.user as User).id } as FindOptionsWhere<Project>,
+      order: { updatedAt: 'DESC' },
+    });
+
+    return res.json(projects);
   } catch (error) {
-    next(new AppError(400, 'Invalid task data'));
+    logger.error('Error getting projects:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
-});
+};
 
-// Update task
-router.put('/:projectId/tasks/:taskId', (req: Request, res: Response, next: NextFunction) => {
-  const project = projects.find(p => p.id === req.params.projectId);
-  if (!project) {
-    return next(new AppError(404, 'Project not found'));
-  }
-
-  const taskIndex = project.tasks?.findIndex(t => t.id === req.params.taskId);
-  if (!project.tasks || taskIndex === -1) {
-    return next(new AppError(404, 'Task not found'));
-  }
-
+// GET /api/projects/:id
+const getProject: AsyncRouteHandler = async (req, res) => {
   try {
-    const updatedTask = {
-      ...project.tasks[taskIndex],
-      ...req.body,
-      updated_at: new Date().toISOString()
-    };
-    project.tasks[taskIndex] = updatedTask;
-    res.json(updatedTask);
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const project = await projectRepository.findOne({
+      where: { id: req.params.id, ownerId: (req.user as User).id } as FindOptionsWhere<Project>,
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    return res.json(project);
   } catch (error) {
-    next(new AppError(400, 'Invalid task data'));
+    logger.error('Error getting project:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
-});
+};
 
-// Delete task
-router.delete('/:projectId/tasks/:taskId', (req: Request, res: Response, next: NextFunction) => {
-  const project = projects.find(p => p.id === req.params.projectId);
-  if (!project) {
-    return next(new AppError(404, 'Project not found'));
+// POST /api/projects
+const createProject: AsyncRouteHandler = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const project = projectRepository.create({
+      ...req.body,
+      ownerId: (req.user as User).id,
+    });
+
+    await projectRepository.save(project);
+    return res.status(201).json(project);
+  } catch (error) {
+    logger.error('Error creating project:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
+};
 
-  const taskIndex = project.tasks?.findIndex(t => t.id === req.params.taskId);
-  if (!project.tasks || taskIndex === -1) {
-    return next(new AppError(404, 'Task not found'));
+// PUT /api/projects/:id
+const updateProject: AsyncRouteHandler = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const project = await projectRepository.findOne({
+      where: { id: req.params.id, ownerId: (req.user as User).id } as FindOptionsWhere<Project>,
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    Object.assign(project, req.body);
+    await projectRepository.save(project);
+    return res.json(project);
+  } catch (error) {
+    logger.error('Error updating project:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
+};
 
-  project.tasks.splice(taskIndex, 1);
-  res.status(204).send();
-});
+// DELETE /api/projects/:id
+const deleteProject: AsyncRouteHandler = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const project = await projectRepository.findOne({
+      where: { id: req.params.id, ownerId: (req.user as User).id } as FindOptionsWhere<Project>,
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    await projectRepository.remove(project);
+    return res.status(204).send();
+  } catch (error) {
+    logger.error('Error deleting project:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// PUT /api/projects/:id/archive
+const archiveProject: AsyncRouteHandler = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const project = await projectRepository.findOne({
+      where: { id: req.params.id, ownerId: (req.user as User).id } as FindOptionsWhere<Project>,
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    project.status = ProjectStatus.ARCHIVED;
+    await projectRepository.save(project);
+    return res.json(project);
+  } catch (error) {
+    logger.error('Error archiving project:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// PUT /api/projects/:id/restore
+const restoreProject: AsyncRouteHandler = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const project = await projectRepository.findOne({
+      where: { id: req.params.id, ownerId: (req.user as User).id } as FindOptionsWhere<Project>,
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    project.status = ProjectStatus.ACTIVE;
+    await projectRepository.save(project);
+    return res.json(project);
+  } catch (error) {
+    logger.error('Error restoring project:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+router.get('/', protect, getProjects);
+router.get('/:id', protect, getProject);
+router.post('/', protect, createProject);
+router.put('/:id', protect, updateProject);
+router.delete('/:id', protect, deleteProject);
+router.put('/:id/archive', protect, archiveProject);
+router.put('/:id/restore', protect, restoreProject);
 
 export default router;

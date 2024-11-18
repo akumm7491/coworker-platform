@@ -1,8 +1,11 @@
 import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useDispatch } from 'react-redux';
+import { ThunkDispatch } from '@reduxjs/toolkit';
+import { AnyAction } from 'redux';
 import { updateProject } from '@/store/slices/projectsSlice';
 import { Project, ProjectIntegration } from '@/types';
+import { RootState } from '@/store';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface EditIntegrationModalProps {
@@ -12,8 +15,13 @@ interface EditIntegrationModalProps {
   integration: ProjectIntegration;
 }
 
-function EditIntegrationModal({ isOpen, onClose, project, integration }: EditIntegrationModalProps) {
-  const dispatch = useDispatch();
+export default function EditIntegrationModal({
+  isOpen,
+  onClose,
+  project,
+  integration,
+}: EditIntegrationModalProps) {
+  const dispatch = useDispatch<ThunkDispatch<RootState, unknown, AnyAction>>();
   const [formData, setFormData] = useState({
     name: integration.name,
     type: integration.type,
@@ -22,8 +30,8 @@ function EditIntegrationModal({ isOpen, onClose, project, integration }: EditInt
       ...integration.config,
       apiKey: integration.config.apiKey || '',
       url: integration.config.url || '',
-      token: integration.config.token || ''
-    }
+      token: integration.config.token || '',
+    },
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,20 +41,20 @@ function EditIntegrationModal({ isOpen, onClose, project, integration }: EditInt
       const updatedIntegration: ProjectIntegration = {
         ...integration,
         ...formData,
-        lastSync: new Date().toISOString()
+        lastSync: new Date().toISOString(),
       };
 
       const updatedIntegrations = project.integrations.map(i =>
         i.id === integration.id ? updatedIntegration : i
       );
 
-      await dispatch(updateProject({
-        id: project.id,
-        data: {
+      await dispatch(
+        updateProject({
           ...project,
-          integrations: updatedIntegrations
-        }
-      })).unwrap();
+          id: project.id,
+          integrations: updatedIntegrations,
+        })
+      ).unwrap();
       onClose();
     } catch (error) {
       console.error('Failed to update integration:', error);
@@ -61,13 +69,13 @@ function EditIntegrationModal({ isOpen, onClose, project, integration }: EditInt
         ...prev,
         config: {
           ...prev.config,
-          [configKey]: value
-        }
+          [configKey]: value,
+        },
       }));
     } else {
       setFormData(prev => ({
         ...prev,
-        [name]: value
+        [name]: value,
       }));
     }
   };
@@ -104,17 +112,17 @@ function EditIntegrationModal({ isOpen, onClose, project, integration }: EditInt
                   className="text-lg font-medium leading-6 text-gray-900 flex justify-between items-center"
                 >
                   <span>Edit Integration</span>
-                  <button
-                    onClick={onClose}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
+                  <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
                     <XMarkIcon className="h-6 w-6" />
                   </button>
                 </Dialog.Title>
 
                 <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                   <div>
-                    <label htmlFor="integration-name" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="integration-name"
+                      className="block text-sm font-medium text-gray-700"
+                    >
                       Integration Name
                     </label>
                     <input
@@ -129,7 +137,10 @@ function EditIntegrationModal({ isOpen, onClose, project, integration }: EditInt
                   </div>
 
                   <div>
-                    <label htmlFor="integration-type" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="integration-type"
+                      className="block text-sm font-medium text-gray-700"
+                    >
                       Integration Type
                     </label>
                     <select
@@ -149,7 +160,10 @@ function EditIntegrationModal({ isOpen, onClose, project, integration }: EditInt
                   </div>
 
                   <div>
-                    <label htmlFor="integration-status" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="integration-status"
+                      className="block text-sm font-medium text-gray-700"
+                    >
                       Status
                     </label>
                     <select
@@ -169,7 +183,10 @@ function EditIntegrationModal({ isOpen, onClose, project, integration }: EditInt
                     <h4 className="text-sm font-medium text-gray-900">Configuration</h4>
 
                     <div>
-                      <label htmlFor="integration-apikey" className="block text-sm font-medium text-gray-700">
+                      <label
+                        htmlFor="integration-apikey"
+                        className="block text-sm font-medium text-gray-700"
+                      >
                         API Key
                       </label>
                       <input
@@ -183,7 +200,10 @@ function EditIntegrationModal({ isOpen, onClose, project, integration }: EditInt
                     </div>
 
                     <div>
-                      <label htmlFor="integration-url" className="block text-sm font-medium text-gray-700">
+                      <label
+                        htmlFor="integration-url"
+                        className="block text-sm font-medium text-gray-700"
+                      >
                         URL
                       </label>
                       <input
@@ -198,7 +218,10 @@ function EditIntegrationModal({ isOpen, onClose, project, integration }: EditInt
                     </div>
 
                     <div>
-                      <label htmlFor="integration-token" className="block text-sm font-medium text-gray-700">
+                      <label
+                        htmlFor="integration-token"
+                        className="block text-sm font-medium text-gray-700"
+                      >
                         Access Token
                       </label>
                       <input
@@ -236,5 +259,3 @@ function EditIntegrationModal({ isOpen, onClose, project, integration }: EditInt
     </Transition>
   );
 }
-
-export default EditIntegrationModal;

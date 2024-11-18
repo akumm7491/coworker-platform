@@ -12,13 +12,10 @@ const gradients = {
   success: 'from-emerald-50 via-white to-teal-50',
   warning: 'from-amber-50 via-white to-orange-50',
   error: 'from-rose-50 via-white to-pink-50',
-  neutral: 'from-gray-50 via-white to-slate-50'
+  neutral: 'from-gray-50 via-white to-slate-50',
 };
 
-export function PageContainer({
-  children,
-  variant = 'primary'
-}: PageContainerProps) {
+export function PageContainer({ children, variant = 'primary' }: PageContainerProps) {
   return (
     <motion.div
       initial={{ opacity: 0 }}

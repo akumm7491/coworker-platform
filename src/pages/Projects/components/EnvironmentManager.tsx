@@ -1,56 +1,56 @@
-import { useState } from 'react'
-import { useDispatch } from 'react-redux'
-import { Project, ProjectEnvironment } from '@/types'
-import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
-import { updateProject } from '@/store/slices/projectsSlice'
-import NewEnvironmentModal from '@/components/projects/NewEnvironmentModal'
+import { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { ThunkDispatch } from '@reduxjs/toolkit';
+import { AnyAction } from 'redux';
+import { Project, ProjectEnvironment } from '@/types';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { updateProject } from '@/store/slices/projectsSlice';
+import NewEnvironmentModal from '@/components/projects/NewEnvironmentModal';
 import {
   PlusIcon,
   ArrowTopRightOnSquareIcon,
   ArrowPathIcon,
   PencilIcon,
-  TrashIcon
-} from '@heroicons/react/24/outline'
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 
 interface EnvironmentManagerProps {
-  project: Project
+  project: Project;
 }
 
 function EnvironmentManager({ project }: EnvironmentManagerProps) {
-  const dispatch = useDispatch()
-  const [isNewEnvironmentModalOpen, setIsNewEnvironmentModalOpen] = useState(false)
-  const [environmentToEdit, setEnvironmentToEdit] = useState<ProjectEnvironment | undefined>()
+  const dispatch = useDispatch<ThunkDispatch<Project, unknown, AnyAction>>();
+  const [isNewEnvironmentModalOpen, setIsNewEnvironmentModalOpen] = useState(false);
+  const [environmentToEdit, setEnvironmentToEdit] = useState<ProjectEnvironment | undefined>();
 
   const handleDeleteEnvironment = (environmentId: string) => {
     const updatedProject = {
       ...project,
-      environments: project.environments.filter(env => env.id !== environmentId)
-    }
-    dispatch(updateProject(updatedProject))
-  }
+      environments: project.environments.filter(env => env.id !== environmentId),
+    };
+    dispatch(updateProject(updatedProject));
+  };
 
   const handleEditEnvironment = (environment: ProjectEnvironment) => {
-    setEnvironmentToEdit(environment)
-    setIsNewEnvironmentModalOpen(true)
-  }
+    setEnvironmentToEdit(environment);
+    setIsNewEnvironmentModalOpen(true);
+  };
 
   const handleDeploy = (environmentId: string) => {
     const updatedProject = {
       ...project,
       environments: project.environments.map(env =>
-        env.id === environmentId
-          ? { ...env, lastDeploy: new Date().toISOString() }
-          : env
-      )
-    }
-    dispatch(updateProject(updatedProject))
-  }
+        env.id === environmentId ? { ...env, lastDeploy: new Date().toISOString() } : env
+      ),
+    };
+    dispatch(updateProject(updatedProject));
+  };
 
   const handleModalClose = () => {
-    setIsNewEnvironmentModalOpen(false)
-    setEnvironmentToEdit(undefined)
-  }
+    setIsNewEnvironmentModalOpen(false);
+    setEnvironmentToEdit(undefined);
+  };
 
   return (
     <div className="space-y-6">
@@ -66,7 +66,7 @@ function EnvironmentManager({ project }: EnvironmentManagerProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {project.environments.map((env) => (
+        {project.environments.map(env => (
           <Card key={env.id} className="p-4">
             <div className="flex justify-between items-start">
               <div>
@@ -75,7 +75,7 @@ function EnvironmentManager({ project }: EnvironmentManagerProps) {
               </div>
               <Badge status={env.status === 'active' ? 'active' : 'paused'} />
             </div>
-            
+
             {env.url && (
               <a
                 href={env.url}
@@ -87,7 +87,7 @@ function EnvironmentManager({ project }: EnvironmentManagerProps) {
                 <ArrowTopRightOnSquareIcon className="w-4 h-4" />
               </a>
             )}
-            
+
             <div className="mt-4 flex justify-between items-center">
               <span className="text-sm text-gray-500">
                 Last deploy: {env.lastDeploy ? new Date(env.lastDeploy).toLocaleString() : 'Never'}
@@ -155,7 +155,7 @@ function EnvironmentManager({ project }: EnvironmentManagerProps) {
         </Card>
       )}
     </div>
-  )
+  );
 }
 
-export default EnvironmentManager
+export default EnvironmentManager;

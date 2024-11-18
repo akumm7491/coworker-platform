@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { Agent } from '@/types';
-import * as api from '@/services/api';
+import { Agent } from '@/types/agent';
+import api from '@/services/api';
 
 interface AgentsState {
   agents: Agent[];
@@ -11,26 +11,23 @@ interface AgentsState {
 const initialState: AgentsState = {
   agents: [],
   loading: false,
-  error: null
+  error: null,
 };
 
-export const fetchAgents = createAsyncThunk(
-  'agents/fetchAgents',
-  async () => {
-    try {
-      return await api.getAgents();
-    } catch (error) {
-      console.error('Error fetching agents:', error);
-      throw error;
-    }
+export const fetchAgents = createAsyncThunk('agents/fetchAgents', async () => {
+  try {
+    return await api.getAgents();
+  } catch (error) {
+    console.error('Error fetching agents:', error);
+    throw error;
   }
-);
+});
 
 export const createAgent = createAsyncThunk(
   'agents/createAgent',
-  async (agent: Partial<Agent>) => {
+  async (agentData: Partial<Agent>) => {
     try {
-      return await api.createAgent(agent);
+      return await api.createAgent(agentData);
     } catch (error) {
       console.error('Error creating agent:', error);
       throw error;
@@ -38,27 +35,23 @@ export const createAgent = createAsyncThunk(
   }
 );
 
+export const deleteAgent = createAsyncThunk('agents/deleteAgent', async (agentId: string) => {
+  try {
+    await api.deleteAgent(agentId);
+    return agentId;
+  } catch (error) {
+    console.error('Error deleting agent:', error);
+    throw error;
+  }
+});
+
 export const updateAgent = createAsyncThunk(
   'agents/updateAgent',
-  async ({ id, data }: { id: string; data: Partial<Agent> }) => {
+  async (agentData: Partial<Agent>) => {
     try {
-      const updatedAgent = await api.updateAgent(id, data);
-      return { id, data: updatedAgent };
+      return await api.updateAgent(agentData);
     } catch (error) {
       console.error('Error updating agent:', error);
-      throw error;
-    }
-  }
-);
-
-export const deleteAgent = createAsyncThunk(
-  'agents/deleteAgent',
-  async (id: string) => {
-    try {
-      await api.deleteAgent(id);
-      return id;
-    } catch (error) {
-      console.error('Error deleting agent:', error);
       throw error;
     }
   }
@@ -67,10 +60,14 @@ export const deleteAgent = createAsyncThunk(
 const agentsSlice = createSlice({
   name: 'agents',
   initialState,
-  reducers: {},
-  extraReducers: (builder) => {
+  reducers: {
+    setAgents: (state, action: PayloadAction<Agent[]>) => {
+      state.agents = action.payload;
+    },
+  },
+  extraReducers: builder => {
     builder
-      .addCase(fetchAgents.pending, (state) => {
+      .addCase(fetchAgents.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -82,7 +79,7 @@ const agentsSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch agents';
       })
-      .addCase(createAgent.pending, (state) => {
+      .addCase(createAgent.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -94,23 +91,7 @@ const agentsSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || 'Failed to create agent';
       })
-      .addCase(updateAgent.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(updateAgent.fulfilled, (state, action) => {
-        state.loading = false;
-        const { id, data } = action.payload;
-        const index = state.agents.findIndex(a => a.id === id);
-        if (index !== -1) {
-          state.agents[index] = { ...state.agents[index], ...data };
-        }
-      })
-      .addCase(updateAgent.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.error.message || 'Failed to update agent';
-      })
-      .addCase(deleteAgent.pending, (state) => {
+      .addCase(deleteAgent.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -121,8 +102,23 @@ const agentsSlice = createSlice({
       .addCase(deleteAgent.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to delete agent';
+      })
+      .addCase(updateAgent.pending, state => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateAgent.fulfilled, (state, action) => {
+        state.loading = false;
+        state.agents = state.agents.map(agent =>
+          agent.id === action.payload.id ? action.payload : agent
+        );
+      })
+      .addCase(updateAgent.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to update agent';
       });
-  }
+  },
 });
 
+export const { setAgents } = agentsSlice.actions;
 export default agentsSlice.reducer;

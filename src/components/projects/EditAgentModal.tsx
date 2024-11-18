@@ -2,8 +2,8 @@ import { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useDispatch } from 'react-redux';
 import { updateAgent } from '@/store/slices/agentsSlice';
-import { Agent } from '@/types';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { AppDispatch } from '@/store';
+import { Agent } from '@/types/agent';
 
 interface EditAgentModalProps {
   isOpen: boolean;
@@ -11,20 +11,24 @@ interface EditAgentModalProps {
   agent: Agent;
 }
 
-function EditAgentModal({ isOpen, onClose, agent }: EditAgentModalProps) {
-  const dispatch = useDispatch();
-  const [formData, setFormData] = useState({
-    id: agent.id,
-    name: agent.name,
-    type: agent.type,
+export default function EditAgentModal({
+  isOpen,
+  onClose,
+  agent,
+}: EditAgentModalProps): JSX.Element {
+  const dispatch = useDispatch<AppDispatch>();
+  const [formData, setFormData] = useState<Partial<Agent>>({
+    id: '',
+    name: '',
+    type: undefined,
     description: '',
-    status: agent.status,
-    performance: agent.performance,
-    settings: {
-      maxConcurrentTasks: 3,
-      autoStart: true,
-      requireApproval: true
-    }
+    status: undefined,
+    performance: {
+      tasksCompleted: 0,
+      successRate: 0,
+      averageTime: 0,
+    },
+    maxConcurrentTasks: 3,
   });
 
   useEffect(() => {
@@ -32,32 +36,33 @@ function EditAgentModal({ isOpen, onClose, agent }: EditAgentModalProps) {
       id: agent.id,
       name: agent.name,
       type: agent.type,
-      description: '',
+      description: agent.description || '',
       status: agent.status,
       performance: agent.performance,
-      settings: {
-        maxConcurrentTasks: 3,
-        autoStart: true,
-        requireApproval: true
-      }
+      maxConcurrentTasks: 3,
     });
   }, [agent]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     try {
-      await dispatch(updateAgent({ id: agent.id, data: formData })).unwrap();
+      await dispatch(updateAgent(formData)).unwrap();
       onClose();
-    } catch (error) {
-      console.error('Failed to update agent:', error);
+    } catch (error: unknown) {
+      console.error(
+        'Failed to update agent:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ): void => {
     const { name, value, type } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }));
   };
 
@@ -88,30 +93,19 @@ function EditAgentModal({ isOpen, onClose, agent }: EditAgentModalProps) {
               leaveTo="opacity-0 scale-95"
             >
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <Dialog.Title
-                  as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900 flex justify-between items-center"
-                >
-                  <span>Edit Agent</span>
-                  <button
-                    onClick={onClose}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
+                <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
+                  Edit Agent
                 </Dialog.Title>
-
                 <form onSubmit={handleSubmit} className="mt-4">
                   <div className="space-y-4">
                     <div>
-                      <label htmlFor="agent-name" className="block text-sm font-medium text-gray-700">
-                        Agent Name
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                        Name
                       </label>
                       <input
                         type="text"
-                        id="agent-name"
                         name="name"
-                        required
+                        id="name"
                         value={formData.name}
                         onChange={handleChange}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
@@ -119,83 +113,54 @@ function EditAgentModal({ isOpen, onClose, agent }: EditAgentModalProps) {
                     </div>
 
                     <div>
-                      <label htmlFor="agent-type" className="block text-sm font-medium text-gray-700">
-                        Agent Type
+                      <label htmlFor="type" className="block text-sm font-medium text-gray-700">
+                        Type
                       </label>
                       <select
-                        id="agent-type"
+                        id="type"
                         name="type"
                         value={formData.type}
                         onChange={handleChange}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       >
-                        <option value="director">Director</option>
-                        <option value="architect">Architect</option>
+                        <option value="assistant">Assistant</option>
+                        <option value="researcher">Researcher</option>
                         <option value="developer">Developer</option>
-                        <option value="qa">QA</option>
-                        <option value="devops">DevOps</option>
-                        <option value="analytics">Analytics</option>
                       </select>
                     </div>
 
                     <div>
-                      <label htmlFor="agent-description" className="block text-sm font-medium text-gray-700">
+                      <label
+                        htmlFor="description"
+                        className="block text-sm font-medium text-gray-700"
+                      >
                         Description
                       </label>
                       <textarea
-                        id="agent-description"
+                        id="description"
                         name="description"
+                        rows={3}
                         value={formData.description}
                         onChange={handleChange}
-                        rows={3}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="max-tasks" className="block text-sm font-medium text-gray-700">
-                        Max Concurrent Tasks
+                      <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                        Status
                       </label>
-                      <input
-                        type="number"
-                        id="max-tasks"
-                        name="settings.maxConcurrentTasks"
-                        min="1"
-                        max="10"
-                        value={formData.settings.maxConcurrentTasks}
+                      <select
+                        id="status"
+                        name="status"
+                        value={formData.status}
                         onChange={handleChange}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="auto-start"
-                          name="settings.autoStart"
-                          checked={formData.settings.autoStart}
-                          onChange={handleChange}
-                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <label htmlFor="auto-start" className="ml-2 block text-sm text-gray-700">
-                          Auto-start tasks
-                        </label>
-                      </div>
-
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="require-approval"
-                          name="settings.requireApproval"
-                          checked={formData.settings.requireApproval}
-                          onChange={handleChange}
-                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <label htmlFor="require-approval" className="ml-2 block text-sm text-gray-700">
-                          Require approval for actions
-                        </label>
-                      </div>
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="pending">Pending</option>
+                      </select>
                     </div>
                   </div>
 
@@ -209,9 +174,9 @@ function EditAgentModal({ isOpen, onClose, agent }: EditAgentModalProps) {
                     </button>
                     <button
                       type="submit"
-                      className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                      className="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                     >
-                      Save Changes
+                      Save
                     </button>
                   </div>
                 </form>
@@ -223,5 +188,3 @@ function EditAgentModal({ isOpen, onClose, agent }: EditAgentModalProps) {
     </Transition>
   );
 }
-
-export default EditAgentModal;

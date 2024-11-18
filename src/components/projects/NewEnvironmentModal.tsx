@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store';
 import { updateProject } from '@/store/slices/projectsSlice';
 import { Project, ProjectEnvironment } from '@/types';
 import { XMarkIcon } from '@heroicons/react/24/outline';
@@ -12,35 +13,39 @@ interface NewEnvironmentModalProps {
   environmentToEdit?: ProjectEnvironment;
 }
 
-function NewEnvironmentModal({ isOpen, onClose, project, environmentToEdit }: NewEnvironmentModalProps) {
-  const dispatch = useDispatch();
+function NewEnvironmentModal({
+  isOpen,
+  onClose,
+  project,
+  environmentToEdit,
+}: NewEnvironmentModalProps) {
+  const dispatch: AppDispatch = useDispatch();
   const [formData, setFormData] = useState({
     name: environmentToEdit?.name || '',
     type: environmentToEdit?.type || 'development',
     url: environmentToEdit?.url || '',
-    status: environmentToEdit?.status || 'active'
+    status: environmentToEdit?.status || 'active',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const newEnvironment: ProjectEnvironment = {
       id: environmentToEdit?.id || `env_${Date.now()}`,
-      ...formData
+      ...formData,
     };
 
     const updatedEnvironments = environmentToEdit
-      ? project.environments.map(env => env.id === environmentToEdit.id ? newEnvironment : env)
+      ? project.environments.map(env => (env.id === environmentToEdit.id ? newEnvironment : env))
       : [...project.environments, newEnvironment];
 
     try {
-      await dispatch(updateProject({
-        id: project.id,
-        data: {
+      await dispatch(
+        updateProject({
           ...project,
-          environments: updatedEnvironments
-        }
-      })).unwrap();
+          environments: updatedEnvironments,
+        })
+      ).unwrap();
       onClose();
     } catch (error) {
       console.error('Failed to update environment:', error);
@@ -51,7 +56,7 @@ function NewEnvironmentModal({ isOpen, onClose, project, environmentToEdit }: Ne
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -87,10 +92,7 @@ function NewEnvironmentModal({ isOpen, onClose, project, environmentToEdit }: Ne
                   className="text-lg font-medium leading-6 text-gray-900 flex justify-between items-center"
                 >
                   <span>{environmentToEdit ? 'Edit Environment' : 'New Environment'}</span>
-                  <button
-                    onClick={onClose}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
+                  <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
                     <XMarkIcon className="h-6 w-6" />
                   </button>
                 </Dialog.Title>

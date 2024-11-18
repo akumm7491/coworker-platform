@@ -8,30 +8,27 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
 } from 'recharts';
-import {
-  ChartBarIcon,
-  CpuChipIcon
-} from '@heroicons/react/24/outline';
+import { ChartBarIcon, CpuChipIcon } from '@heroicons/react/24/outline';
 
 interface ProjectMetricsProps {
   project: Project;
 }
 
-function ProjectMetrics({ project }: ProjectMetricsProps) {
+function ProjectMetrics({ project: _ }: ProjectMetricsProps) {
   const progressData = [
     { name: 'Week 1', progress: 20 },
     { name: 'Week 2', progress: 45 },
     { name: 'Week 3', progress: 65 },
     { name: 'Week 4', progress: 85 },
-    { name: 'Week 5', progress: 92 }
+    { name: 'Week 5', progress: 92 },
   ];
 
   const taskDistribution = [
     { name: 'Completed', value: 45, color: '#818CF8' },
     { name: 'In Progress', value: 35, color: '#34D399' },
-    { name: 'Pending', value: 20, color: '#F472B6' }
+    { name: 'Pending', value: 20, color: '#F472B6' },
   ];
 
   return (
@@ -46,8 +43,8 @@ function ProjectMetrics({ project }: ProjectMetricsProps) {
             <LineChart data={progressData}>
               <defs>
                 <linearGradient id="colorProgress" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#818CF8" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#818CF8" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#818CF8" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#818CF8" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
@@ -59,7 +56,7 @@ function ProjectMetrics({ project }: ProjectMetricsProps) {
                   backdropFilter: 'blur(8px)',
                   borderRadius: '0.75rem',
                   border: 'none',
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                 }}
               />
               <Line

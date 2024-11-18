@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion } from 'framer-motion';
 
 export function AnimatedCode() {
   const codeLines = [
@@ -13,8 +13,8 @@ export function AnimatedCode() {
     '      return this.execute(code)',
     '    }',
     '  }',
-    '}'
-  ]
+    '}',
+  ];
 
   return (
     <div className="bg-gray-900 rounded-xl p-6 font-mono text-sm">
@@ -30,5 +30,5 @@ export function AnimatedCode() {
         </motion.div>
       ))}
     </div>
-  )
+  );
 }

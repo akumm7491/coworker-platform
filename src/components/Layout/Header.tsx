@@ -17,7 +17,7 @@ function Header() {
     <header className="bg-white shadow">
       <div className="container mx-auto px-6 py-4 flex justify-between items-center">
         <h1 className="text-xl font-semibold text-gray-800">Coworker Platform</h1>
-        
+
         <Menu as="div" className="relative">
           <Menu.Button className="flex items-center space-x-3 hover:opacity-80">
             <UserCircleIcon className="h-8 w-8 text-gray-600" />

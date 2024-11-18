@@ -1,89 +1,183 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import type { Agent } from '../types/shared.js';
-import { v4 as uuidv4 } from 'uuid';
+import { AppDataSource } from '../config/database.js';
+import { Agent, AgentStatus } from '../models/Agent.js';
+import { createLogger } from '../utils/logger.js';
+import { AsyncRouteHandler } from '../types/route-handler.js';
 import { AppError } from '../middleware/error.js';
 
+const logger = createLogger('agent-routes');
 const router = Router();
+const agentRepository = AppDataSource.getRepository(Agent);
 
-// In-memory store for development
-let agents: Agent[] = [
-  {
-    id: uuidv4(),
-    name: "Agent Smith",
-    type: "developer",
-    status: "idle",
-    performance: {
-      tasksCompleted: 0,
-      successRate: 100,
-      averageTime: 0
-    },
-    capabilities: ["development", "testing"],
-    learningRate: 1.0,
-    maxConcurrentTasks: 3,
-    description: "A versatile development agent",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+const requireAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  if (!req.user) {
+    throw new AppError('Authentication required', 401);
   }
-];
+  next();
+};
 
-// Get all agents
-router.get('/', (_req: Request, res: Response) => {
-  res.json(agents);
-});
+// GET /api/agents
+const getAgents: AsyncRouteHandler = async (req: Request, res: Response): Promise<Response> => {
+  const user = req.user!;
 
-// Get agent by ID
-router.get('/:id', (req: Request, res: Response, next: NextFunction) => {
-  const agent = agents.find(a => a.id === req.params.id);
-  if (!agent) {
-    return next(new AppError(404, 'Agent not found'));
-  }
-  res.json(agent);
-});
-
-// Create new agent
-router.post('/', (req: Request, res: Response, next: NextFunction) => {
   try {
-    const newAgent: Agent = {
-      id: uuidv4(),
-      ...req.body,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    agents.push(newAgent);
-    res.status(201).json(newAgent);
+    const agents = await agentRepository.find({
+      where: { ownerId: user.id },
+      relations: ['user'],
+    });
+    return res.json(agents);
   } catch (error) {
-    next(new AppError(400, 'Invalid agent data'));
+    logger.error('Error fetching agents:', error);
+    throw new AppError('Internal server error', 500);
   }
-});
+};
 
-// Update agent
-router.put('/:id', (req: Request, res: Response, next: NextFunction) => {
-  const index = agents.findIndex(a => a.id === req.params.id);
-  if (index === -1) {
-    return next(new AppError(404, 'Agent not found'));
-  }
-  
+// GET /api/agents/:id
+const getAgent: AsyncRouteHandler = async (req: Request, res: Response): Promise<Response> => {
+  const user = req.user!;
+
   try {
-    agents[index] = {
-      ...agents[index],
-      ...req.body,
-      updated_at: new Date().toISOString()
-    };
-    res.json(agents[index]);
-  } catch (error) {
-    next(new AppError(400, 'Invalid agent data'));
-  }
-});
+    const agent = await agentRepository.findOne({
+      where: { id: req.params.id, ownerId: user.id },
+      relations: ['user'],
+    });
 
-// Delete agent
-router.delete('/:id', (req: Request, res: Response, next: NextFunction) => {
-  const index = agents.findIndex(a => a.id === req.params.id);
-  if (index === -1) {
-    return next(new AppError(404, 'Agent not found'));
+    if (!agent) {
+      throw new AppError('Agent not found', 404);
+    }
+
+    return res.json(agent);
+  } catch (error) {
+    logger.error('Error fetching agent:', error);
+    if (error instanceof AppError) throw error;
+    throw new AppError('Internal server error', 500);
   }
-  
-  agents = agents.filter(a => a.id !== req.params.id);
-  res.status(204).send();
-});
+};
+
+// POST /api/agents
+const createAgent: AsyncRouteHandler = async (req: Request, res: Response): Promise<Response> => {
+  const user = req.user!;
+
+  try {
+    const agent = agentRepository.create({
+      ...req.body,
+      userId: user.id,
+    });
+    await agentRepository.save(agent);
+    return res.status(201).json(agent);
+  } catch (error) {
+    logger.error('Error creating agent:', error);
+    throw new AppError('Internal server error', 500);
+  }
+};
+
+// PUT /api/agents/:id
+const updateAgent: AsyncRouteHandler = async (req: Request, res: Response): Promise<Response> => {
+  const user = req.user!;
+
+  try {
+    const agent = await agentRepository.findOne({
+      where: { id: req.params.id, ownerId: user.id },
+    });
+
+    if (!agent) {
+      throw new AppError('Agent not found', 404);
+    }
+
+    await agentRepository.update(req.params.id, req.body);
+    const updatedAgent = await agentRepository.findOne({
+      where: { id: req.params.id },
+    });
+
+    return res.json(updatedAgent);
+  } catch (error) {
+    logger.error('Error updating agent:', error);
+    if (error instanceof AppError) throw error;
+    throw new AppError('Internal server error', 500);
+  }
+};
+
+// DELETE /api/agents/:id
+const deleteAgent: AsyncRouteHandler = async (req: Request, res: Response): Promise<Response> => {
+  const user = req.user!;
+
+  try {
+    const agent = await agentRepository.findOne({
+      where: { id: req.params.id, ownerId: user.id },
+    });
+
+    if (!agent) {
+      throw new AppError('Agent not found', 404);
+    }
+
+    await agentRepository.remove(agent);
+    return res.status(204).send();
+  } catch (error) {
+    logger.error('Error deleting agent:', error);
+    if (error instanceof AppError) throw error;
+    throw new AppError('Internal server error', 500);
+  }
+};
+
+// PUT /api/agents/:id/train
+const trainAgent: AsyncRouteHandler = async (req: Request, res: Response): Promise<Response> => {
+  const user = req.user!;
+
+  try {
+    const agent = await agentRepository.findOne({
+      where: { id: req.params.id, ownerId: user.id },
+    });
+
+    if (!agent) {
+      throw new AppError('Agent not found', 404);
+    }
+
+    // Add training logic here
+    agent.status = AgentStatus.TRAINING;
+    await agentRepository.save(agent);
+
+    return res.json(agent);
+  } catch (error) {
+    logger.error('Error training agent:', error);
+    if (error instanceof AppError) throw error;
+    throw new AppError('Internal server error', 500);
+  }
+};
+
+// PUT /api/agents/:id/deploy
+const deployAgent: AsyncRouteHandler = async (req: Request, res: Response): Promise<Response> => {
+  const user = req.user!;
+
+  try {
+    const agent = await agentRepository.findOne({
+      where: { id: req.params.id, ownerId: user.id },
+    });
+
+    if (!agent) {
+      throw new AppError('Agent not found', 404);
+    }
+
+    // Add deployment logic here
+    agent.status = AgentStatus.DEPLOYED;
+    await agentRepository.save(agent);
+
+    return res.json(agent);
+  } catch (error) {
+    logger.error('Error deploying agent:', error);
+    if (error instanceof AppError) throw error;
+    throw new AppError('Internal server error', 500);
+  }
+};
+
+// Apply requireAuth middleware to all routes
+router.use(requireAuth);
+
+router.get('/', getAgents);
+router.get('/:id', getAgent);
+router.post('/', createAgent);
+router.put('/:id', updateAgent);
+router.delete('/:id', deleteAgent);
+router.put('/:id/train', trainAgent);
+router.put('/:id/deploy', deployAgent);
 
 export default router;

@@ -1,18 +1,19 @@
-import { Fragment, useState } from 'react'
-import { Dialog, Transition } from '@headlessui/react'
-import { useDispatch } from 'react-redux'
-import { updateProject } from '@/store/slices/projectsSlice'
-import { Project, ProjectIntegration } from '@/types'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { Fragment, useState } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
+import { useDispatch } from 'react-redux';
+import { updateProject } from '@/store/slices/projectsSlice';
+import { Project, ProjectIntegration } from '@/types';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface NewIntegrationModalProps {
-  isOpen: boolean
-  onClose: () => void
-  project: Project
+  isOpen: boolean;
+  onClose: () => void;
+  project: Project;
 }
 
 function NewIntegrationModal({ isOpen, onClose, project }: NewIntegrationModalProps) {
-  const dispatch = useDispatch()
+  // Type the dispatch to accept async thunks
+  const dispatch = useDispatch<any>();
   const [formData, setFormData] = useState({
     type: 'github',
     name: '',
@@ -20,40 +21,46 @@ function NewIntegrationModal({ isOpen, onClose, project }: NewIntegrationModalPr
       repository: '',
       branch: 'main',
       channel: '',
-      webhook: ''
-    }
-  })
+      webhook: '',
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     const newIntegration: ProjectIntegration = {
       id: `int-${Date.now()}`,
       type: formData.type as 'github' | 'gitlab' | 'jira' | 'slack' | 'aws' | 'azure',
       name: formData.name,
       status: 'active',
       config: formData.config,
-      lastSync: new Date().toISOString()
-    }
+      lastSync: new Date().toISOString(),
+    };
 
     const updatedProject = {
       ...project,
-      integrations: [...project.integrations, newIntegration]
-    }
+      integrations: [...project.integrations, newIntegration],
+    };
 
     dispatch(updateProject(updatedProject))
-    onClose()
-    setFormData({
-      type: 'github',
-      name: '',
-      config: {
-        repository: '',
-        branch: 'main',
-        channel: '',
-        webhook: ''
-      }
-    })
-  }
+      .unwrap()
+      .then(() => {
+        onClose();
+        setFormData({
+          type: 'github',
+          name: '',
+          config: {
+            repository: '',
+            branch: 'main',
+            channel: '',
+            webhook: '',
+          },
+        });
+      })
+      .catch((error: Error) => {
+        console.error('Failed to update project:', error);
+      });
+  };
 
   const renderConfigFields = () => {
     switch (formData.type) {
@@ -67,10 +74,12 @@ function NewIntegrationModal({ isOpen, onClose, project }: NewIntegrationModalPr
                 type="text"
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 value={formData.config.repository}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  config: { ...formData.config, repository: e.target.value }
-                })}
+                onChange={e =>
+                  setFormData({
+                    ...formData,
+                    config: { ...formData.config, repository: e.target.value },
+                  })
+                }
                 placeholder="org/repo"
               />
             </div>
@@ -80,14 +89,16 @@ function NewIntegrationModal({ isOpen, onClose, project }: NewIntegrationModalPr
                 type="text"
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 value={formData.config.branch}
-                onChange={(e) => setFormData({
-                  ...formData,
-                  config: { ...formData.config, branch: e.target.value }
-                })}
+                onChange={e =>
+                  setFormData({
+                    ...formData,
+                    config: { ...formData.config, branch: e.target.value },
+                  })
+                }
               />
             </div>
           </>
-        )
+        );
       case 'slack':
         return (
           <div>
@@ -96,14 +107,16 @@ function NewIntegrationModal({ isOpen, onClose, project }: NewIntegrationModalPr
               type="text"
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
               value={formData.config.channel}
-              onChange={(e) => setFormData({
-                ...formData,
-                config: { ...formData.config, channel: e.target.value }
-              })}
+              onChange={e =>
+                setFormData({
+                  ...formData,
+                  config: { ...formData.config, channel: e.target.value },
+                })
+              }
               placeholder="#channel"
             />
           </div>
-        )
+        );
       default:
         return (
           <div>
@@ -112,15 +125,17 @@ function NewIntegrationModal({ isOpen, onClose, project }: NewIntegrationModalPr
               type="text"
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
               value={formData.config.webhook}
-              onChange={(e) => setFormData({
-                ...formData,
-                config: { ...formData.config, webhook: e.target.value }
-              })}
+              onChange={e =>
+                setFormData({
+                  ...formData,
+                  config: { ...formData.config, webhook: e.target.value },
+                })
+              }
             />
           </div>
-        )
+        );
     }
-  }
+  };
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -166,7 +181,7 @@ function NewIntegrationModal({ isOpen, onClose, project }: NewIntegrationModalPr
                     <select
                       className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                       value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                      onChange={e => setFormData({ ...formData, type: e.target.value })}
                     >
                       <option value="github">GitHub</option>
                       <option value="gitlab">GitLab</option>
@@ -186,7 +201,7 @@ function NewIntegrationModal({ isOpen, onClose, project }: NewIntegrationModalPr
                       required
                       className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
                     />
                   </div>
 
@@ -195,14 +210,14 @@ function NewIntegrationModal({ isOpen, onClose, project }: NewIntegrationModalPr
                   <div className="mt-6 flex justify-end space-x-3">
                     <button
                       type="button"
+                      className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                       onClick={onClose}
-                      className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+                      className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                     >
                       Add Integration
                     </button>
@@ -214,7 +229,7 @@ function NewIntegrationModal({ isOpen, onClose, project }: NewIntegrationModalPr
         </div>
       </Dialog>
     </Transition>
-  )
+  );
 }
 
-export default NewIntegrationModal
+export default NewIntegrationModal;

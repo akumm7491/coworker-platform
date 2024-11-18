@@ -1,71 +1,33 @@
-import { Fragment, useState, useEffect } from 'react';
+import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { useDispatch } from 'react-redux';
-import { loginSuccess } from '@/store/slices/authSlice';
-import { XMarkIcon, CheckIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
-import { signupSchema } from '@/utils/validation';
-import { register } from '@/services/api';
-import type { ZodError } from 'zod';
+import { Spinner } from '@/components/ui/Spinner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SignupModalProps {
-  isOpen: boolean;
   onClose: () => void;
-  onLoginClick: () => void;
 }
 
 const initialFormData = {
   name: '',
   email: '',
   password: '',
-  confirmPassword: ''
+  confirmPassword: '',
 };
 
-function SignupModal({ isOpen, onClose, onLoginClick }: SignupModalProps) {
-  const dispatch = useDispatch();
+export const SignupModal = ({ onClose }: SignupModalProps) => {
+  const { handleSignup, openLogin } = useAuth();
   const [formData, setFormData] = useState(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [serverError, setServerError] = useState<string | null>(null);
-
-  // Password strength indicators
-  const passwordRequirements = [
-    { label: '8+ characters', test: (pass: string) => pass.length >= 8 },
-    { label: 'Uppercase letter', test: (pass: string) => /[A-Z]/.test(pass) },
-    { label: 'Lowercase letter', test: (pass: string) => /[a-z]/.test(pass) },
-    { label: 'Number', test: (pass: string) => /[0-9]/.test(pass) },
-    { label: 'Special character', test: (pass: string) => /[^A-Za-z0-9]/.test(pass) }
-  ];
-
-  // Real-time validation
-  useEffect(() => {
-    if (Object.keys(touched).length === 0) return;
-
-    try {
-      signupSchema.parse(formData);
-      setErrors({});
-      setServerError(null);
-    } catch (error) {
-      if (error instanceof Error) {
-        if ((error as ZodError).errors) {
-          const zodError = error as ZodError;
-          const newErrors: Record<string, string> = {};
-          zodError.errors.forEach((err) => {
-            if (err.path && touched[err.path[0]]) {
-              newErrors[err.path[0]] = err.message;
-            }
-          });
-          setErrors(newErrors);
-        }
-      }
-    }
-  }, [formData, touched]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    setTouched(prev => ({ ...prev, [name]: true }));
+    setErrors(prev => ({ ...prev, [name]: '' }));
+    setServerError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,41 +36,27 @@ function SignupModal({ isOpen, onClose, onLoginClick }: SignupModalProps) {
     setServerError(null);
 
     try {
-      signupSchema.parse(formData);
-      const response = await register(formData);
-      
-      if (response.success) {
-        dispatch(loginSuccess(response));
-        setFormData(initialFormData); // Clear form data
-        setTouched({}); // Reset touched state
-        setErrors({}); // Clear errors
-        onClose();
-      }
+      await handleSignup(
+        formData.name,
+        formData.email,
+        formData.password,
+        formData.confirmPassword
+      );
+      onClose();
     } catch (error) {
-      console.error('Signup error:', error);
-      if (error instanceof Error) {
-        setServerError(error.message);
-      } else {
-        setServerError('An unexpected error occurred. Please try again.');
-      }
+      setServerError(error instanceof Error ? error.message : 'Registration failed');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getInputClasses = (fieldName: string) => {
-    const baseClasses = 'block w-full rounded-lg border p-2.5 text-sm';
-    if (errors[fieldName]) {
-      return `${baseClasses} bg-red-50 border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500`;
-    }
-    if (touched[fieldName] && !errors[fieldName]) {
-      return `${baseClasses} bg-green-50 border-green-500 text-green-900 placeholder-green-700 focus:ring-green-500 focus:border-green-500`;
-    }
-    return `${baseClasses} bg-gray-50 border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500`;
+  const handleLoginClick = () => {
+    onClose();
+    openLogin();
   };
 
   return (
-    <Transition appear show={isOpen} as={Fragment}>
+    <Transition appear show as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
         <Transition.Child
           as={Fragment}
@@ -119,7 +67,7 @@ function SignupModal({ isOpen, onClose, onLoginClick }: SignupModalProps) {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
+          <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -134,164 +82,130 @@ function SignupModal({ isOpen, onClose, onLoginClick }: SignupModalProps) {
               leaveTo="opacity-0 scale-95"
             >
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <Dialog.Title
-                  as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900 flex justify-between items-center"
-                >
-                  Create your account
-                  <button
-                    type="button"
-                    className="rounded-lg p-1 hover:bg-gray-100 focus:outline-none"
-                    onClick={onClose}
-                  >
-                    <XMarkIcon className="h-5 w-5 text-gray-500" />
+                <Dialog.Title as="div" className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold leading-6 text-gray-900">Create Account</h3>
+                  <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+                    <XMarkIcon className="h-6 w-6" />
                   </button>
                 </Dialog.Title>
 
-                <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-                  {/* Server Error Message */}
-                  <AnimatePresence>
-                    {serverError && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="rounded-lg bg-red-50 p-4 text-sm text-red-800 flex items-start"
-                      >
-                        <XCircleIcon className="h-5 w-5 text-red-400 mr-2 mt-0.5 flex-shrink-0" />
-                        <span>{serverError}</span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                <AnimatePresence mode="wait">
+                  {serverError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="mb-4 flex items-center gap-2 rounded-md bg-red-50 p-3 text-red-700"
+                    >
+                      <XCircleIcon className="h-5 w-5 text-red-400" />
+                      {serverError}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-                  {/* Name Field */}
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label htmlFor="name" className="block mb-1 text-sm font-medium text-gray-900">
-                      Full Name
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                      Name
                     </label>
                     <input
                       type="text"
-                      id="name"
                       name="name"
+                      id="name"
                       value={formData.name}
                       onChange={handleInputChange}
-                      className={getInputClasses('name')}
-                      placeholder="John Doe"
-                      disabled={isLoading}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      required
                     />
-                    {errors.name && (
-                      <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-                    )}
+                    {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
                   </div>
 
-                  {/* Email Field */}
                   <div>
-                    <label htmlFor="email" className="block mb-1 text-sm font-medium text-gray-900">
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                       Email
                     </label>
                     <input
                       type="email"
-                      id="email"
                       name="email"
+                      id="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className={getInputClasses('email')}
-                      placeholder="name@company.com"
-                      disabled={isLoading}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      required
                     />
-                    {errors.email && (
-                      <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                    )}
+                    {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
                   </div>
 
-                  {/* Password Field */}
                   <div>
-                    <label htmlFor="password" className="block mb-1 text-sm font-medium text-gray-900">
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                       Password
                     </label>
                     <input
                       type="password"
-                      id="password"
                       name="password"
+                      id="password"
                       value={formData.password}
                       onChange={handleInputChange}
-                      className={getInputClasses('password')}
-                      placeholder="••••••••"
-                      disabled={isLoading}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      required
                     />
                     {errors.password && (
                       <p className="mt-1 text-sm text-red-600">{errors.password}</p>
                     )}
                   </div>
 
-                  {/* Password Requirements */}
-                  <div className="space-y-2">
-                    {passwordRequirements.map(({ label, test }) => (
-                      <div key={label} className="flex items-center text-sm">
-                        {test(formData.password) ? (
-                          <CheckIcon className="h-4 w-4 text-green-500 mr-2" />
-                        ) : (
-                          <XMarkIcon className="h-4 w-4 text-gray-300 mr-2" />
-                        )}
-                        <span className={test(formData.password) ? 'text-green-700' : 'text-gray-500'}>
-                          {label}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Confirm Password Field */}
                   <div>
-                    <label htmlFor="confirmPassword" className="block mb-1 text-sm font-medium text-gray-900">
+                    <label
+                      htmlFor="confirmPassword"
+                      className="block text-sm font-medium text-gray-700"
+                    >
                       Confirm Password
                     </label>
                     <input
                       type="password"
-                      id="confirmPassword"
                       name="confirmPassword"
+                      id="confirmPassword"
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
-                      className={getInputClasses('confirmPassword')}
-                      placeholder="••••••••"
-                      disabled={isLoading}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      required
                     />
                     {errors.confirmPassword && (
                       <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
                     )}
                   </div>
 
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    disabled={isLoading || Object.keys(errors).length > 0}
-                    className={`w-full rounded-lg px-5 py-2.5 text-center text-sm font-medium text-white
-                      ${isLoading || Object.keys(errors).length > 0
-                        ? 'bg-blue-300 cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300'
-                      }`}
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center justify-center">
-                        <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                        Creating account...
-                      </div>
-                    ) : (
-                      'Create account'
-                    )}
-                  </button>
+                  <div className="mt-6 space-y-4">
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full flex justify-center items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? <Spinner size="sm" /> : 'Create Account'}
+                    </button>
 
-                  {/* Login Link */}
-                  <p className="text-sm text-gray-600 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/google`;
+                      }}
+                      className="w-full flex items-center justify-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                    >
+                      <img src="/google.svg" alt="Google" className="h-5 w-5" />
+                      Continue with Google
+                    </button>
+                  </div>
+
+                  <div className="mt-4 text-center text-sm text-gray-500">
                     Already have an account?{' '}
                     <button
                       type="button"
-                      onClick={onLoginClick}
-                      className="text-blue-600 hover:underline focus:outline-none"
-                      disabled={isLoading}
+                      onClick={handleLoginClick}
+                      className="font-semibold text-blue-600 hover:text-blue-500"
                     >
-                      Log in
+                      Sign in
                     </button>
-                  </p>
+                  </div>
                 </form>
               </Dialog.Panel>
             </Transition.Child>
@@ -300,6 +214,4 @@ function SignupModal({ isOpen, onClose, onLoginClick }: SignupModalProps) {
       </Dialog>
     </Transition>
   );
-}
-
-export default SignupModal;
+};

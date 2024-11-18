@@ -1,63 +1,67 @@
-import { Fragment, useState, useEffect } from 'react'
-import { Dialog, Transition } from '@headlessui/react'
-import { useDispatch } from 'react-redux'
-import { updateProject } from '@/store/slices/projectsSlice'
-import { Project, ProjectTask } from '@/types'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { Fragment, useState, useEffect } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store';
+import { updateProject } from '@/store/slices/projectsSlice';
+import { Project, ProjectTask } from '@/types';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface EditTaskModalProps {
-  isOpen: boolean
-  onClose: () => void
-  project: Project
-  task: ProjectTask
+  isOpen: boolean;
+  onClose: () => void;
+  project: Project;
+  task: ProjectTask;
 }
 
 function EditTaskModal({ isOpen, onClose, project, task }: EditTaskModalProps) {
-  const dispatch = useDispatch()
+  const dispatch = useDispatch<AppDispatch>();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     priority: 'medium',
     dueDate: '',
     tags: '',
-    status: 'pending'
-  })
+    status: 'pending',
+  });
 
   useEffect(() => {
     if (task) {
       setFormData({
-        title: task.title,
-        description: task.description,
-        priority: task.priority,
-        dueDate: task.dueDate || '',
-        tags: task.tags.join(', '),
-        status: task.status
-      })
+        title: task.title ?? '',
+        description: task.description ?? '',
+        priority: task.priority ?? 'medium',
+        dueDate: task.dueDate ?? '',
+        tags: task.tags?.join(', ') ?? '',
+        status: task.status ?? 'pending',
+      });
     }
-  }, [task])
+  }, [task]);
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     const updatedTask: ProjectTask = {
       ...task,
       title: formData.title,
       description: formData.description,
       priority: formData.priority as 'low' | 'medium' | 'high',
       dueDate: formData.dueDate,
-      tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+      tags: formData.tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(Boolean),
       status: formData.status as ProjectTask['status'],
-      updatedAt: new Date().toISOString()
-    }
+      updatedAt: new Date().toISOString(),
+    };
 
     const updatedProject = {
       ...project,
-      tasks: project.tasks.map(t => t.id === task.id ? updatedTask : t)
-    }
+      tasks: project.tasks.map(t => (t.id === task.id ? updatedTask : t)),
+    };
 
-    dispatch(updateProject(updatedProject))
-    onClose()
-  }
+    dispatch(updateProject(updatedProject));
+    onClose();
+  };
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -106,12 +110,15 @@ function EditTaskModal({ isOpen, onClose, project, task }: EditTaskModalProps) {
                       required
                       className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      onChange={e => setFormData({ ...formData, title: e.target.value })}
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="description"
+                      className="block text-sm font-medium text-gray-700"
+                    >
                       Description
                     </label>
                     <textarea
@@ -120,7 +127,7 @@ function EditTaskModal({ isOpen, onClose, project, task }: EditTaskModalProps) {
                       required
                       className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      onChange={e => setFormData({ ...formData, description: e.target.value })}
                     />
                   </div>
 
@@ -132,7 +139,7 @@ function EditTaskModal({ isOpen, onClose, project, task }: EditTaskModalProps) {
                       id="status"
                       className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      onChange={e => setFormData({ ...formData, status: e.target.value })}
                     >
                       <option value="pending">Pending</option>
                       <option value="in_progress">In Progress</option>
@@ -150,7 +157,7 @@ function EditTaskModal({ isOpen, onClose, project, task }: EditTaskModalProps) {
                       id="priority"
                       className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={formData.priority}
-                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                      onChange={e => setFormData({ ...formData, priority: e.target.value })}
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -167,7 +174,7 @@ function EditTaskModal({ isOpen, onClose, project, task }: EditTaskModalProps) {
                       id="dueDate"
                       className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={formData.dueDate}
-                      onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                      onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
                     />
                   </div>
 
@@ -180,7 +187,7 @@ function EditTaskModal({ isOpen, onClose, project, task }: EditTaskModalProps) {
                       id="tags"
                       className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={formData.tags}
-                      onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                      onChange={e => setFormData({ ...formData, tags: e.target.value })}
                       placeholder="e.g., frontend, bug, feature"
                     />
                   </div>
@@ -207,7 +214,7 @@ function EditTaskModal({ isOpen, onClose, project, task }: EditTaskModalProps) {
         </div>
       </Dialog>
     </Transition>
-  )
+  );
 }
 
-export default EditTaskModal
+export default EditTaskModal;

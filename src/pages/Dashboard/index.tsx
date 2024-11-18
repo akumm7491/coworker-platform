@@ -1,25 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '@/store';
+import { RootState, AppDispatch } from '@/store';
 import { fetchProjects } from '@/store/slices/projectsSlice';
 import { fetchAgents } from '@/store/slices/agentsSlice';
-import {
-  Card,
-  PageContainer,
-  PageHeader,
-  EmptyState,
-  Button
-} from '@/components/ui';
+import { Card, PageContainer, PageHeader, EmptyState, Button } from '@/components/ui';
 import { PieChartCard } from '@/components/charts/PieChartCard';
 import { motion } from 'framer-motion';
 import {
   ChartBarIcon,
   ClockIcon,
-  CheckCircleIcon,
   BeakerIcon,
   ArrowTrendingUpIcon,
   CpuChipIcon,
-  RocketLaunchIcon
+  RocketLaunchIcon,
 } from '@heroicons/react/24/outline';
 import {
   LineChart,
@@ -28,77 +21,71 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
 } from 'recharts';
 
 function Dashboard() {
-  const dispatch = useDispatch();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [taskDistribution, setTaskDistribution] = useState([
-    { name: 'Completed', value: 0, color: '#818CF8' },
-    { name: 'In Progress', value: 0, color: '#34D399' },
-    { name: 'Pending', value: 0, color: '#F472B6' }
-  ]);
-  const [performanceData, setPerformanceData] = useState([]);
-  
-  const { agents = [], loading: agentsLoading } = useSelector((state: RootState) => state.agents);
-  const { projects = [], loading: projectsLoading, error: projectsError } = useSelector((state: RootState) => state.projects);
+  const dispatch = useDispatch<AppDispatch>();
+  const {
+    projects,
+    loading: projectsLoading,
+    error: projectsError,
+  } = useSelector((state: RootState) => state.projects);
+  const { agents, loading: agentsLoading } = useSelector((state: RootState) => state.agents);
 
-  // Fetch projects and agents on mount
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [taskDistribution, setTaskDistribution] = useState<
+    {
+      name: string;
+      value: number;
+      color: string;
+    }[]
+  >([]);
+  const [performanceData, setPerformanceData] = useState<
+    {
+      name: string;
+      tasks: number;
+      efficiency: number;
+    }[]
+  >([]);
+
   useEffect(() => {
-    dispatch(fetchProjects());
-    dispatch(fetchAgents());
+    const fetchInitialData = async () => {
+      try {
+        await dispatch(fetchProjects()).unwrap();
+        await dispatch(fetchAgents()).unwrap();
+        setIsLoading(false);
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'An error occurred');
+        setIsLoading(false);
+      }
+    };
+    fetchInitialData();
   }, [dispatch]);
 
-  // Fetch dashboard analytics data
   useEffect(() => {
     const fetchDashboardData = async () => {
-      if (!projects.length) return; // Don't fetch analytics if no projects exist
-
-      setIsLoading(true);
       try {
-        const accessToken = localStorage.getItem('accessToken');
-        if (!accessToken) {
-          throw new Error('No access token found');
-        }
+        setIsLoading(true);
+        setError(null);
 
-        const [taskDistResponse, perfResponse] = await Promise.all([
-          fetch('/api/analytics/task-distribution', {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`
-            }
-          }),
-          fetch('/api/analytics/performance', {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`
-            }
-          })
-        ]);
+        // Simulated data for task distribution
+        const taskDistData = [
+          { name: 'Analysis', value: 35, color: '#818CF8' },
+          { name: 'Processing', value: 25, color: '#34D399' },
+          { name: 'Research', value: 20, color: '#F472B6' },
+          { name: 'Other', value: 20, color: '#FBBF24' },
+        ];
 
-        // Log responses for debugging
-        console.log('Task Distribution Response:', taskDistResponse);
-        console.log('Performance Response:', perfResponse);
-
-        if (!taskDistResponse.ok) {
-          throw new Error(`Task distribution fetch failed: ${taskDistResponse.status}`);
-        }
-        if (!perfResponse.ok) {
-          throw new Error(`Performance data fetch failed: ${perfResponse.status}`);
-        }
-
-        const taskDistData = await taskDistResponse.json();
-        const perfData = await perfResponse.json();
-
-        // Validate response data
-        if (!Array.isArray(taskDistData)) {
-          console.error('Invalid task distribution data:', taskDistData);
-          throw new Error('Invalid task distribution data format');
-        }
-        if (!Array.isArray(perfData)) {
-          console.error('Invalid performance data:', perfData);
-          throw new Error('Invalid performance data format');
-        }
+        // Simulated performance data
+        const perfData = [
+          { name: 'Jan', tasks: 85, efficiency: 78 },
+          { name: 'Feb', tasks: 88, efficiency: 82 },
+          { name: 'Mar', tasks: 92, efficiency: 85 },
+          { name: 'Apr', tasks: 90, efficiency: 88 },
+          { name: 'May', tasks: 95, efficiency: 92 },
+        ];
 
         setTaskDistribution(taskDistData);
         setPerformanceData(perfData);
@@ -125,25 +112,25 @@ function Dashboard() {
           icon={<ChartBarIcon className="w-8 h-8 text-indigo-600" />}
         />
         <div className="flex items-center justify-center min-h-[60vh]">
-          <motion.div 
+          <motion.div
             className="flex flex-col items-center space-y-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
           >
             <motion.div
-              animate={{ 
+              animate={{
                 rotate: 360,
-                transition: { duration: 2, repeat: Infinity, ease: "linear" }
+                transition: { duration: 2, repeat: Infinity, ease: 'linear' },
               }}
               className="w-16 h-16 text-indigo-600"
             >
               <BeakerIcon className="w-full h-full" />
             </motion.div>
             <motion.p
-              animate={{ 
+              animate={{
                 opacity: [1, 0.5, 1],
-                transition: { duration: 1.5, repeat: Infinity }
+                transition: { duration: 1.5, repeat: Infinity },
               }}
               className="text-indigo-600 font-medium"
             >
@@ -201,7 +188,9 @@ function Dashboard() {
             <Button
               variant="primary"
               leftIcon={<CpuChipIcon className="w-5 h-5" />}
-              onClick={() => {/* Navigate to agents/projects */}}
+              onClick={() => {
+                /* Navigate to agents/projects */
+              }}
             >
               Get Started
             </Button>
@@ -237,7 +226,7 @@ function Dashboard() {
                     backdropFilter: 'blur(8px)',
                     borderRadius: '0.75rem',
                     border: 'none',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                   }}
                 />
                 <Line
@@ -265,7 +254,11 @@ function Dashboard() {
             <ClockIcon className="w-6 h-6 text-indigo-600" />
           </div>
           <div className="h-64">
-            <PieChartCard data={taskDistribution} />
+            <PieChartCard
+              title="Task Distribution"
+              icon={<ClockIcon className="w-6 h-6 text-indigo-600" />}
+              data={taskDistribution}
+            />
           </div>
         </Card>
       </div>

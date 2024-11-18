@@ -1,19 +1,19 @@
-import { Fragment } from 'react'
-import { Menu, Transition } from '@headlessui/react'
-import { useSelector } from 'react-redux'
-import { Link } from 'react-router-dom'
-import { RootState } from '@/store'
+import { Fragment } from 'react';
+import { Menu, Transition } from '@headlessui/react';
+import { useSelector } from 'react-redux';
+import { Link } from 'react-router-dom';
+import { RootState } from '@/store';
 import {
   UserCircleIcon,
   Cog6ToothIcon,
   BellIcon,
-  ArrowRightOnRectangleIcon
-} from '@heroicons/react/24/outline'
+  ArrowRightOnRectangleIcon,
+} from '@heroicons/react/24/outline';
 
 function UserMenu() {
-  const { profile } = useSelector((state: RootState) => state.user)
+  const { profile } = useSelector((state: RootState) => state.user);
 
-  if (!profile) return null
+  if (!profile) return null;
 
   return (
     <Menu as="div" className="relative">
@@ -93,7 +93,7 @@ function UserMenu() {
         </Menu.Items>
       </Transition>
     </Menu>
-  )
+  );
 }
 
-export default UserMenu
+export default UserMenu;

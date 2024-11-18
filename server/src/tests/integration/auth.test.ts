@@ -7,7 +7,7 @@ const testUser = {
   email: 'test@example.com',
   password: 'testpassword123',
   name: 'Test User',
-  role: 'user'
+  role: 'user',
 };
 
 describe('Auth API', () => {
@@ -17,9 +17,7 @@ describe('Auth API', () => {
 
   describe('POST /api/auth/register', () => {
     it('should register a new user', async () => {
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send(testUser);
+      const response = await request(app).post('/api/auth/register').send(testUser);
 
       expect(response.status).toBe(201);
       expect(response.body).toHaveProperty('token');
@@ -31,23 +29,17 @@ describe('Auth API', () => {
     });
 
     it('should return 400 for invalid user data', async () => {
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send({});
+      const response = await request(app).post('/api/auth/register').send({});
 
       expect(response.status).toBe(400);
     });
 
     it('should return 400 for duplicate email', async () => {
       // Register first user
-      await request(app)
-        .post('/api/auth/register')
-        .send(testUser);
+      await request(app).post('/api/auth/register').send(testUser);
 
       // Try to register with same email
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send(testUser);
+      const response = await request(app).post('/api/auth/register').send(testUser);
 
       expect(response.status).toBe(400);
       expect(response.body.error).toMatch(/already exists/i);
@@ -57,18 +49,14 @@ describe('Auth API', () => {
   describe('POST /api/auth/login', () => {
     beforeEach(async () => {
       // Register a user before each login test
-      await request(app)
-        .post('/api/auth/register')
-        .send(testUser);
+      await request(app).post('/api/auth/register').send(testUser);
     });
 
     it('should login successfully with correct credentials', async () => {
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password
-        });
+      const response = await request(app).post('/api/auth/login').send({
+        email: testUser.email,
+        password: testUser.password,
+      });
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('token');
@@ -78,23 +66,19 @@ describe('Auth API', () => {
     });
 
     it('should return 401 for incorrect password', async () => {
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({
-          email: testUser.email,
-          password: 'wrongpassword'
-        });
+      const response = await request(app).post('/api/auth/login').send({
+        email: testUser.email,
+        password: 'wrongpassword',
+      });
 
       expect(response.status).toBe(401);
     });
 
     it('should return 401 for non-existent user', async () => {
-      const response = await request(app)
-        .post('/api/auth/login')
-        .send({
-          email: 'nonexistent@example.com',
-          password: testUser.password
-        });
+      const response = await request(app).post('/api/auth/login').send({
+        email: 'nonexistent@example.com',
+        password: testUser.password,
+      });
 
       expect(response.status).toBe(401);
     });
@@ -105,16 +89,12 @@ describe('Auth API', () => {
 
     beforeEach(async () => {
       // Register and login a user before each test
-      await request(app)
-        .post('/api/auth/register')
-        .send(testUser);
+      await request(app).post('/api/auth/register').send(testUser);
 
-      const loginResponse = await request(app)
-        .post('/api/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password
-        });
+      const loginResponse = await request(app).post('/api/auth/login').send({
+        email: testUser.email,
+        password: testUser.password,
+      });
 
       authToken = loginResponse.body.token;
     });
@@ -132,8 +112,7 @@ describe('Auth API', () => {
     });
 
     it('should return 401 without token', async () => {
-      const response = await request(app)
-        .get('/api/auth/me');
+      const response = await request(app).get('/api/auth/me');
 
       expect(response.status).toBe(401);
     });

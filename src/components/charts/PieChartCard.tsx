@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, TooltipProps } from 'recharts';
 import { Card } from '@/components/ui';
 import { ReactNode } from 'react';
 
@@ -15,13 +15,15 @@ interface PieChartCardProps {
   className?: string;
 }
 
-export function PieChartCard({
-  title,
-  icon,
-  data,
-  className = ''
-}: PieChartCardProps) {
-  const CustomTooltip = ({ active, payload }: any) => {
+interface CustomTooltipProps extends TooltipProps<number, string> {
+  active?: boolean;
+  payload?: Array<{
+    payload: DataItem;
+  }>;
+}
+
+export function PieChartCard({ title, icon, data, className = '' }: PieChartCardProps) {
+  const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
@@ -44,16 +46,10 @@ export function PieChartCard({
         <div className="flex-1">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie
-                data={data}
-                innerRadius={60}
-                outerRadius={80}
-                paddingAngle={5}
-                dataKey="value"
-              >
+              <Pie data={data} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                 {data.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
+                  <Cell
+                    key={`cell-${index}`}
                     fill={entry.color}
                     className="hover:opacity-80 transition-opacity duration-200"
                   />
@@ -62,19 +58,6 @@ export function PieChartCard({
               <Tooltip content={<CustomTooltip />} />
             </PieChart>
           </ResponsiveContainer>
-        </div>
-        <div className="flex justify-center items-center space-x-6 mt-2">
-          {data.map((entry, index) => (
-            <div key={index} className="flex items-center">
-              <div
-                className="w-3 h-3 rounded-full mr-2"
-                style={{ backgroundColor: entry.color }}
-              />
-              <span className="text-sm font-medium text-gray-600">
-                {entry.name}
-              </span>
-            </div>
-          ))}
         </div>
       </div>
     </Card>

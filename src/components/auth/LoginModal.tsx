@@ -1,26 +1,21 @@
 import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { useDispatch } from 'react-redux';
-import { loginSuccess } from '@/store/slices/authSlice';
 import { XMarkIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
-import { loginSchema } from '@/utils/validation';
-import { login } from '@/services/api';
-import type { ZodError } from 'zod';
+import { Spinner } from '@/components/ui/Spinner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginModalProps {
-  isOpen: boolean;
   onClose: () => void;
-  onSignupClick: () => void;
 }
 
 const initialFormData = {
   email: '',
-  password: ''
+  password: '',
 };
 
-function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
-  const dispatch = useDispatch();
+export const LoginModal = ({ onClose }: LoginModalProps) => {
+  const { handleLogin, openSignup } = useAuth();
   const [formData, setFormData] = useState(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -39,59 +34,22 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
     setServerError(null);
 
     try {
-      // Validate form data
-      loginSchema.parse(formData);
-
-      // Attempt login
-      const response = await login(formData);
-      
-      // Update Redux store with user data and tokens
-      dispatch(loginSuccess({
-        ...response.user,
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken
-      }));
-
-      // Only close modal and clear form on successful login
-      setFormData(initialFormData);
-      setErrors({});
+      await handleLogin(formData.email, formData.password);
       onClose();
     } catch (error) {
-      console.error('Login error:', error);
-      
-      // Handle validation errors
-      if (error instanceof Error) {
-        if ((error as ZodError).errors) {
-          const zodError = error as ZodError;
-          const newErrors: Record<string, string> = {};
-          zodError.errors.forEach((err) => {
-            if (err.path) {
-              newErrors[err.path[0]] = err.message;
-            }
-          });
-          setErrors(newErrors);
-        } else {
-          // Handle API errors
-          setServerError(error.message || 'Invalid email or password');
-        }
-      } else {
-        setServerError('An unexpected error occurred. Please try again.');
-      }
+      setServerError(error instanceof Error ? error.message : 'Login failed');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getInputClasses = (fieldName: string) => {
-    const baseClasses = 'block w-full rounded-lg border p-2.5 text-sm';
-    if (errors[fieldName]) {
-      return `${baseClasses} bg-red-50 border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500`;
-    }
-    return `${baseClasses} bg-gray-50 border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500`;
+  const handleSignupClick = () => {
+    onClose();
+    openSignup();
   };
 
   return (
-    <Transition appear show={isOpen} as={Fragment}>
+    <Transition appear show as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
         <Transition.Child
           as={Fragment}
@@ -102,7 +60,7 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
+          <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -117,112 +75,93 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
               leaveTo="opacity-0 scale-95"
             >
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <Dialog.Title
-                  as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900 flex justify-between items-center"
-                >
-                  Log in to your account
-                  <button
-                    type="button"
-                    className="rounded-lg p-1 hover:bg-gray-100 focus:outline-none"
-                    onClick={onClose}
-                  >
-                    <XMarkIcon className="h-5 w-5 text-gray-500" />
+                <Dialog.Title as="div" className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold leading-6 text-gray-900">Sign In</h3>
+                  <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+                    <XMarkIcon className="h-6 w-6" />
                   </button>
                 </Dialog.Title>
 
-                <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-                  {/* Server Error Message */}
-                  <AnimatePresence>
-                    {serverError && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="rounded-lg bg-red-50 p-4 text-sm text-red-800 flex items-start"
-                      >
-                        <XCircleIcon className="h-5 w-5 text-red-400 mr-2 mt-0.5 flex-shrink-0" />
-                        <span>{serverError}</span>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                <AnimatePresence mode="wait">
+                  {serverError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="mb-4 flex items-center gap-2 rounded-md bg-red-50 p-3 text-red-700"
+                    >
+                      <XCircleIcon className="h-5 w-5 text-red-400" />
+                      {serverError}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-                  {/* Email Field */}
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label htmlFor="email" className="block mb-1 text-sm font-medium text-gray-900">
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                       Email
                     </label>
                     <input
                       type="email"
-                      id="email"
                       name="email"
+                      id="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className={getInputClasses('email')}
-                      placeholder="name@company.com"
-                      disabled={isLoading}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      required
                     />
-                    {errors.email && (
-                      <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                    )}
+                    {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
                   </div>
 
-                  {/* Password Field */}
                   <div>
-                    <label htmlFor="password" className="block mb-1 text-sm font-medium text-gray-900">
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                       Password
                     </label>
                     <input
                       type="password"
-                      id="password"
                       name="password"
+                      id="password"
                       value={formData.password}
                       onChange={handleInputChange}
-                      className={getInputClasses('password')}
-                      placeholder="••••••••"
-                      disabled={isLoading}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      required
                     />
                     {errors.password && (
                       <p className="mt-1 text-sm text-red-600">{errors.password}</p>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <input
-                        id="remember"
-                        type="checkbox"
-                        className="w-4 h-4 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <label htmlFor="remember" className="ml-2 text-sm text-gray-600">
-                        Remember me
-                      </label>
-                    </div>
-                    <button type="button" className="text-sm text-blue-600 hover:underline">
-                      Forgot password?
+                  <div className="mt-6 space-y-4">
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full flex justify-center items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? <Spinner size="sm" /> : 'Sign In'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/google`;
+                      }}
+                      className="w-full flex items-center justify-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                    >
+                      <img src="/google.svg" alt="Google" className="h-5 w-5" />
+                      Continue with Google
                     </button>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className={`w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center ${
-                      isLoading ? 'opacity-75 cursor-not-allowed' : ''
-                    }`}
-                  >
-                    {isLoading ? 'Signing in...' : 'Sign in'}
-                  </button>
-
-                  <p className="text-sm text-gray-500 text-center">
-                    Don't have an account?{' '}
+                  <div className="mt-4 text-center text-sm text-gray-500">
+                    Don&apos;t have an account?{' '}
                     <button
                       type="button"
-                      onClick={onSignupClick}
-                      className="text-blue-600 hover:underline font-medium"
+                      onClick={handleSignupClick}
+                      className="font-semibold text-blue-600 hover:text-blue-500"
                     >
                       Sign up
                     </button>
-                  </p>
+                  </div>
                 </form>
               </Dialog.Panel>
             </Transition.Child>
@@ -231,6 +170,4 @@ function LoginModal({ isOpen, onClose, onSignupClick }: LoginModalProps) {
       </Dialog>
     </Transition>
   );
-}
-
-export default LoginModal;
+};

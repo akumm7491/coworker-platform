@@ -17,9 +17,7 @@ export function SectionHeading({ title, subtitle }: SectionHeadingProps) {
       <h2 className="font-['Space_Grotesk'] text-4xl sm:text-5xl font-bold mb-6 bg-gradient-to-r from-[#2563eb] via-[#7c3aed] to-[#06b6d4] bg-clip-text text-transparent leading-tight pb-1">
         {title}
       </h2>
-      <p className="text-xl text-gray-300 leading-relaxed">
-        {subtitle}
-      </p>
+      <p className="text-xl text-gray-300 leading-relaxed">{subtitle}</p>
     </motion.div>
   );
 }

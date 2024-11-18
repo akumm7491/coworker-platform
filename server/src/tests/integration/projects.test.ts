@@ -6,7 +6,7 @@ import {
   testTask,
   expectProject,
   expectTask,
-  cleanupDatabase
+  cleanupDatabase,
 } from '../helpers/testHelper';
 
 describe('Projects API', () => {
@@ -24,9 +24,7 @@ describe('Projects API', () => {
 
   describe('POST /api/projects', () => {
     it('should create a new project', async () => {
-      const response = await request(app)
-        .post('/api/projects')
-        .send(testProject);
+      const response = await request(app).post('/api/projects').send(testProject);
 
       expect(response.status).toBe(201);
       expectProject(response.body);
@@ -35,9 +33,7 @@ describe('Projects API', () => {
     });
 
     it('should return 400 for invalid project data', async () => {
-      const response = await request(app)
-        .post('/api/projects')
-        .send({});
+      const response = await request(app).post('/api/projects').send({});
 
       expect(response.status).toBe(400);
     });
@@ -46,12 +42,9 @@ describe('Projects API', () => {
   describe('GET /api/projects/:id', () => {
     it('should return a project by id', async () => {
       // Create a project first
-      const createResponse = await request(app)
-        .post('/api/projects')
-        .send(testProject);
+      const createResponse = await request(app).post('/api/projects').send(testProject);
 
-      const response = await request(app)
-        .get(`/api/projects/${createResponse.body.id}`);
+      const response = await request(app).get(`/api/projects/${createResponse.body.id}`);
 
       expect(response.status).toBe(200);
       expectProject(response.body);
@@ -59,8 +52,7 @@ describe('Projects API', () => {
     });
 
     it('should return 404 for non-existent project', async () => {
-      const response = await request(app)
-        .get('/api/projects/non-existent-id');
+      const response = await request(app).get('/api/projects/non-existent-id');
 
       expect(response.status).toBe(404);
     });
@@ -69,13 +61,11 @@ describe('Projects API', () => {
   describe('PUT /api/projects/:id', () => {
     it('should update a project', async () => {
       // Create a project first
-      const createResponse = await request(app)
-        .post('/api/projects')
-        .send(testProject);
+      const createResponse = await request(app).post('/api/projects').send(testProject);
 
       const updateData = {
         name: 'Updated Project',
-        description: 'Updated description'
+        description: 'Updated description',
       };
 
       const response = await request(app)
@@ -100,24 +90,19 @@ describe('Projects API', () => {
   describe('DELETE /api/projects/:id', () => {
     it('should delete a project', async () => {
       // Create a project first
-      const createResponse = await request(app)
-        .post('/api/projects')
-        .send(testProject);
+      const createResponse = await request(app).post('/api/projects').send(testProject);
 
-      const response = await request(app)
-        .delete(`/api/projects/${createResponse.body.id}`);
+      const response = await request(app).delete(`/api/projects/${createResponse.body.id}`);
 
       expect(response.status).toBe(204);
 
       // Verify project is deleted
-      const getResponse = await request(app)
-        .get(`/api/projects/${createResponse.body.id}`);
+      const getResponse = await request(app).get(`/api/projects/${createResponse.body.id}`);
       expect(getResponse.status).toBe(404);
     });
 
     it('should return 404 for non-existent project', async () => {
-      const response = await request(app)
-        .delete('/api/projects/non-existent-id');
+      const response = await request(app).delete('/api/projects/non-existent-id');
 
       expect(response.status).toBe(404);
     });
@@ -127,24 +112,20 @@ describe('Projects API', () => {
     let projectId: string;
 
     beforeEach(async () => {
-      const response = await request(app)
-        .post('/api/projects')
-        .send(testProject);
+      const response = await request(app).post('/api/projects').send(testProject);
       projectId = response.body.id;
     });
 
     describe('GET /api/projects/:projectId/tasks', () => {
       it('should return all tasks for a project', async () => {
-        const response = await request(app)
-          .get(`/api/projects/${projectId}/tasks`);
+        const response = await request(app).get(`/api/projects/${projectId}/tasks`);
 
         expect(response.status).toBe(200);
         expect(Array.isArray(response.body)).toBe(true);
       });
 
       it('should return 404 for non-existent project', async () => {
-        const response = await request(app)
-          .get('/api/projects/non-existent-id/tasks');
+        const response = await request(app).get('/api/projects/non-existent-id/tasks');
 
         expect(response.status).toBe(404);
       });
@@ -152,9 +133,7 @@ describe('Projects API', () => {
 
     describe('POST /api/projects/:projectId/tasks', () => {
       it('should create a new task', async () => {
-        const response = await request(app)
-          .post(`/api/projects/${projectId}/tasks`)
-          .send(testTask);
+        const response = await request(app).post(`/api/projects/${projectId}/tasks`).send(testTask);
 
         expect(response.status).toBe(201);
         expectTask(response.body);
@@ -180,7 +159,7 @@ describe('Projects API', () => {
 
         const updateData = {
           title: 'Updated Task',
-          description: 'Updated description'
+          description: 'Updated description',
         };
 
         const response = await request(app)
@@ -209,20 +188,23 @@ describe('Projects API', () => {
           .post(`/api/projects/${projectId}/tasks`)
           .send(testTask);
 
-        const response = await request(app)
-          .delete(`/api/projects/${projectId}/tasks/${createResponse.body.id}`);
+        const response = await request(app).delete(
+          `/api/projects/${projectId}/tasks/${createResponse.body.id}`,
+        );
 
         expect(response.status).toBe(204);
 
         // Verify task is deleted
-        const getResponse = await request(app)
-          .get(`/api/projects/${projectId}/tasks`);
-        expect(getResponse.body).not.toContainEqual(expect.objectContaining({ id: createResponse.body.id }));
+        const getResponse = await request(app).get(`/api/projects/${projectId}/tasks`);
+        expect(getResponse.body).not.toContainEqual(
+          expect.objectContaining({ id: createResponse.body.id }),
+        );
       });
 
       it('should return 404 for non-existent task', async () => {
-        const response = await request(app)
-          .delete(`/api/projects/${projectId}/tasks/non-existent-id`);
+        const response = await request(app).delete(
+          `/api/projects/${projectId}/tasks/non-existent-id`,
+        );
 
         expect(response.status).toBe(404);
       });

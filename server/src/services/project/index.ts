@@ -1,141 +1,137 @@
-import express from 'express';
-import { createServer } from 'http';
-import { Pool } from 'pg';
-import { Kafka } from 'kafkajs';
-import Redis from 'ioredis';
-import mongoose from 'mongoose';
-import { Client } from '@elastic/elasticsearch';
+import { Repository } from 'typeorm';
+import { Project, ProjectStatus } from '../../models/Project.js';
+import { ProjectRepository } from '../../config/database.js';
+import { createLogger } from '../../utils/logger.js';
 
-// PostgreSQL connection for commands
-const pgPool = new Pool({
-  connectionString: process.env.POSTGRES_URL,
-});
+const logger = createLogger('ProjectService');
 
-// MongoDB connection for queries
-mongoose.connect(process.env.MONGODB_URL as string);
+export interface CreateProjectInput {
+  name: string;
+  description: string;
+  status?: ProjectStatus;
+  completion?: number;
+}
 
-// Redis client for caching
-const redis = new Redis(process.env.REDIS_URL);
+export interface UpdateProjectInput {
+  name?: string;
+  description?: string;
+  status?: ProjectStatus;
+  completion?: number;
+  agents_assigned?: string[];
+}
 
-// Elasticsearch client for search
-const elasticsearch = new Client({
-  node: process.env.ELASTICSEARCH_URL,
-});
+export class ProjectService {
+  private repository: Repository<Project>;
 
-// Kafka setup
-const kafka = new Kafka({
-  clientId: 'project-service',
-  brokers: (process.env.KAFKA_BROKERS || '').split(','),
-});
-
-const producer = kafka.producer();
-const consumer = kafka.consumer({ groupId: 'project-service-group' });
-
-const app = express();
-app.use(express.json());
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'healthy' });
-});
-
-// Project Commands (PostgreSQL)
-app.post('/api/projects', async (req, res) => {
-  const client = await pgPool.connect();
-  try {
-    await client.query('BEGIN');
-    const { name, description, ownerId } = req.body;
-    
-    // Create project in PostgreSQL
-    const result = await client.query(
-      'INSERT INTO projects (name, description, owner_id) VALUES ($1, $2, $3) RETURNING id',
-      [name, description, ownerId]
-    );
-    
-    // Emit project.created event
-    await producer.send({
-      topic: 'coworker-platform.projects.events',
-      messages: [{
-        key: result.rows[0].id,
-        value: JSON.stringify({
-          type: 'project.created',
-          data: { id: result.rows[0].id, name, description, ownerId },
-          timestamp: new Date().toISOString(),
-        }),
-      }],
-    });
-
-    await client.query('COMMIT');
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error creating project:', error);
-    res.status(500).json({ error: 'Failed to create project' });
-  } finally {
-    client.release();
+  constructor() {
+    this.repository = ProjectRepository as Repository<Project>;
   }
-});
 
-// Project Queries (MongoDB)
-app.get('/api/projects', async (req, res) => {
-  try {
-    const cacheKey = `projects:${JSON.stringify(req.query)}`;
-    const cachedData = await redis.get(cacheKey);
-    
-    if (cachedData) {
-      return res.json(JSON.parse(cachedData));
+  async createProject(input: CreateProjectInput): Promise<Project> {
+    try {
+      const project = this.repository.create({
+        name: input.name,
+        description: input.description,
+        status: input.status || ProjectStatus.NOT_STARTED,
+        completion: input.completion || 0,
+        agents_assigned: [],
+      });
+
+      return await this.repository.save(project);
+    } catch (error) {
+      logger.error('Failed to create project:', error);
+      throw error;
     }
-
-    const projects = await mongoose.model('Project').find(req.query);
-    await redis.set(cacheKey, JSON.stringify(projects), 'EX', 300); // Cache for 5 minutes
-    
-    res.json(projects);
-  } catch (error) {
-    console.error('Error fetching projects:', error);
-    res.status(500).json({ error: 'Failed to fetch projects' });
   }
-});
 
-// Initialize Kafka consumer
-async function initializeKafka() {
-  await producer.connect();
-  await consumer.connect();
-  await consumer.subscribe({ topic: 'coworker-platform.projects.events' });
-
-  await consumer.run({
-    eachMessage: async ({ topic, partition, message }) => {
-      if (!message.value) return;
-      
-      const event = JSON.parse(message.value.toString());
-      
-      // Update read model in MongoDB
-      if (event.type === 'project.created') {
-        await mongoose.model('Project').create(event.data);
-        
-        // Index in Elasticsearch for full-text search
-        await elasticsearch.index({
-          index: 'projects',
-          id: event.data.id,
-          document: event.data,
-        });
+  async getProject(id: string): Promise<Project> {
+    try {
+      const project = await this.repository.findOne({ where: { id } });
+      if (!project) {
+        throw new Error(`Project ${id} not found`);
       }
-    },
-  });
-}
+      return project;
+    } catch (error) {
+      logger.error(`Failed to get project ${id}:`, error);
+      throw error;
+    }
+  }
 
-// Start the service
-async function start() {
-  try {
-    await initializeKafka();
-    const port = process.env.PROJECT_SERVICE_PORT || 3002;
-    server.listen(port, () => {
-      console.log(`Project service listening on port ${port}`);
-    });
-  } catch (error) {
-    console.error('Failed to start project service:', error);
-    process.exit(1);
+  async getAllProjects(): Promise<Project[]> {
+    try {
+      return await this.repository.find();
+    } catch (error) {
+      logger.error('Failed to get all projects:', error);
+      throw error;
+    }
+  }
+
+  async updateProject(id: string, input: UpdateProjectInput): Promise<Project> {
+    try {
+      const project = await this.getProject(id);
+      Object.assign(project, input);
+      await this.repository.save(project);
+      logger.info(`Updated project ${id}`);
+      return project;
+    } catch (error) {
+      logger.error(`Failed to update project ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteProject(id: string): Promise<void> {
+    try {
+      await this.repository.delete(id);
+      logger.info(`Deleted project ${id}`);
+    } catch (error) {
+      logger.error(`Failed to delete project ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async assignAgentToProject(projectId: string, agentId: string): Promise<Project> {
+    try {
+      const project = await this.getProject(projectId);
+      if (!project.agents_assigned) {
+        project.agents_assigned = [];
+      }
+      if (!project.agents_assigned.includes(agentId)) {
+        project.agents_assigned.push(agentId);
+        await this.repository.save(project);
+        logger.info(`Assigned agent ${agentId} to project ${projectId}`);
+      }
+      return project;
+    } catch (error) {
+      logger.error(`Failed to assign agent ${agentId} to project ${projectId}:`, error);
+      throw error;
+    }
+  }
+
+  async removeAgentFromProject(projectId: string, agentId: string): Promise<Project> {
+    try {
+      const project = await this.getProject(projectId);
+      if (project.agents_assigned) {
+        project.agents_assigned = project.agents_assigned.filter(id => id !== agentId);
+        await this.repository.save(project);
+        logger.info(`Removed agent ${agentId} from project ${projectId}`);
+      }
+      return project;
+    } catch (error) {
+      logger.error(`Failed to remove agent ${agentId} from project ${projectId}:`, error);
+      throw error;
+    }
+  }
+
+  async updateProjectStatus(id: string, status: ProjectStatus): Promise<Project> {
+    return this.updateProject(id, { status });
+  }
+
+  async updateProjectCompletion(id: string, completion: number): Promise<Project> {
+    if (completion < 0 || completion > 100) {
+      throw new Error('Completion must be between 0 and 100');
+    }
+    return this.updateProject(id, { completion });
   }
 }
 
-const server = createServer(app);
-start();
+export const projectService = new ProjectService();

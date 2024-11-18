@@ -1,54 +1,63 @@
-import { useState } from 'react'
-import { useDispatch } from 'react-redux'
-import { Project, ProjectIntegration } from '@/types'
-import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
-import { updateProject } from '@/store/slices/projectsSlice'
-import NewIntegrationModal from '@/components/projects/NewIntegrationModal'
-import EditIntegrationModal from '@/components/projects/EditIntegrationModal'
-import {
-  PlusIcon,
-  ArrowPathIcon,
-  TrashIcon,
-  PencilIcon
-} from '@heroicons/react/24/outline'
+import { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { ThunkDispatch } from '@reduxjs/toolkit';
+import { Project, ProjectIntegration } from '@/types';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { updateProject } from '@/store/slices/projectsSlice';
+import NewIntegrationModal from '@/components/projects/NewIntegrationModal';
+import EditIntegrationModal from '@/components/projects/EditIntegrationModal';
+import { PlusIcon, ArrowPathIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 
 interface IntegrationPanelProps {
-  project: Project
+  project: Project;
 }
 
 function IntegrationPanel({ project }: IntegrationPanelProps) {
-  const dispatch = useDispatch()
-  const [isNewIntegrationModalOpen, setIsNewIntegrationModalOpen] = useState(false)
-  const [integrationToEdit, setIntegrationToEdit] = useState<ProjectIntegration | null>(null)
+  const dispatch = useDispatch<ThunkDispatch<any, any, any>>();
+  const [isNewIntegrationModalOpen, setIsNewIntegrationModalOpen] = useState(false);
+  const [integrationToEdit, setIntegrationToEdit] = useState<ProjectIntegration | null>(null);
 
   const handleDeleteIntegration = (integrationId: string) => {
     const updatedProject = {
       ...project,
-      integrations: project.integrations.filter(i => i.id !== integrationId)
-    }
-    dispatch(updateProject(updatedProject))
-  }
+      integrations: project.integrations.filter(i => i.id !== integrationId),
+    };
+    dispatch(updateProject(updatedProject));
+  };
 
   const handleEditIntegration = (integration: ProjectIntegration) => {
-    setIntegrationToEdit(integration)
-  }
+    setIntegrationToEdit(integration);
+  };
 
   const handleCloseEditModal = () => {
-    setIntegrationToEdit(null)
-  }
+    setIntegrationToEdit(null);
+  };
 
   const handleSyncIntegration = (integrationId: string) => {
     const updatedProject = {
       ...project,
       integrations: project.integrations.map(i =>
-        i.id === integrationId
-          ? { ...i, lastSync: new Date().toISOString() }
-          : i
-      )
+        i.id === integrationId ? { ...i, lastSync: new Date().toISOString() } : i
+      ),
+    };
+    dispatch(updateProject(updatedProject));
+  };
+
+  const mapIntegrationStatus = (
+    status: ProjectIntegration['status']
+  ): 'completed' | 'error' | 'active' | 'paused' | 'idle' | 'working' => {
+    switch (status) {
+      case 'active':
+        return 'active';
+      case 'inactive':
+        return 'idle';
+      case 'error':
+        return 'error';
+      default:
+        return 'idle';
     }
-    dispatch(updateProject(updatedProject))
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -64,16 +73,18 @@ function IntegrationPanel({ project }: IntegrationPanelProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {project.integrations.map((integration) => (
+        {project.integrations.map(integration => (
           <Card key={integration.id} className="p-4">
             <div className="flex justify-between items-start">
               <div>
                 <h4 className="font-medium">{integration.name}</h4>
-                <p className="text-sm text-gray-500">Last sync: {new Date(integration.lastSync).toLocaleString()}</p>
+                <p className="text-sm text-gray-500">
+                  Last sync: {new Date(integration.lastSync).toLocaleString()}
+                </p>
               </div>
-              <Badge status={integration.status} />
+              <Badge status={mapIntegrationStatus(integration.status)} />
             </div>
-            
+
             <div className="mt-4 flex justify-between items-center">
               <button
                 onClick={() => handleSyncIntegration(integration.id)}
@@ -118,7 +129,7 @@ function IntegrationPanel({ project }: IntegrationPanelProps) {
         />
       )}
     </div>
-  )
+  );
 }
 
-export default IntegrationPanel
+export default IntegrationPanel;

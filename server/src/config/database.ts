@@ -1,62 +1,32 @@
-import mongoose from 'mongoose';
-import { config } from './env.js';
+import { DataSource } from 'typeorm';
+import { createLogger } from '../utils/logger.js';
+import { User } from '../models/User.js';
+import { Project } from '../models/Project.js';
+import { Agent } from '../models/Agent.js';
 
-export const connectDB = async () => {
+const logger = createLogger('database');
+
+export const AppDataSource = new DataSource({
+  type: 'postgres',
+  url: process.env.POSTGRES_URL,
+  entities: [User, Project, Agent],
+  migrations: ['src/migrations/*.ts'],
+  synchronize: process.env.NODE_ENV === 'development',
+  logging: process.env.NODE_ENV === 'development',
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+export async function initializeDatabase(): Promise<void> {
   try {
-    // Enable debug mode for Mongoose
-    mongoose.set('debug', true);
-
-    // Set strictQuery to false to prepare for Mongoose 7
-    mongoose.set('strictQuery', false);
-
-    // Configure connection options
-    const options: mongoose.ConnectOptions = {
-      autoIndex: true, // Build indexes
-      maxPoolSize: 10, // Maintain up to 10 socket connections
-      serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
-      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-      family: 4, // Use IPv4, skip trying IPv6
-      retryWrites: true,
-      writeConcern: { w: 'majority' }
-    };
-
-    // Connect to MongoDB
-    const conn = await mongoose.connect(config.database.url, options);
-    
-    console.log('MongoDB Connection Details:');
-    console.log(`Host: ${conn.connection.host}`);
-    console.log(`Database: ${conn.connection.name}`);
-    console.log(`Port: ${conn.connection.port}`);
-    console.log('MongoDB Connected Successfully');
-    
-    // Handle errors after initial connection
-    mongoose.connection.on('error', (err) => {
-      console.error('MongoDB connection error:', err);
-      console.error('Full error details:', JSON.stringify(err, null, 2));
-    });
-
-    mongoose.connection.on('disconnected', () => {
-      console.warn('MongoDB disconnected. Attempting to reconnect...');
-    });
-
-    mongoose.connection.on('reconnected', () => {
-      console.log('MongoDB reconnected');
-    });
-
-    // Log all MongoDB operations in development
-    if (process.env.NODE_ENV === 'development') {
-      mongoose.set('debug', (collectionName: string, method: string, ...args: any[]) => {
-        console.log(`MongoDB Debug: ${collectionName}.${method}`, args);
-      });
-    }
-
+    await AppDataSource.initialize();
+    logger.info('Database connection initialized');
   } catch (error) {
-    console.error('MongoDB connection error:');
-    console.error('Error details:', error);
-    if (error instanceof Error) {
-      console.error('Error message:', error.message);
-      console.error('Stack trace:', error.stack);
-    }
-    process.exit(1);
+    logger.error('Error initializing database:', error);
+    throw error;
   }
-};
+}
+
+// Export repositories
+export const UserRepository = AppDataSource.getRepository(User);
+export const ProjectRepository = AppDataSource.getRepository(Project);
+export const AgentRepository = AppDataSource.getRepository(Agent);

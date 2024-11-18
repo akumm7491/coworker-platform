@@ -18,7 +18,7 @@ import {
   ClipboardDocumentListIcon,
   UserGroupIcon,
   ArrowLeftIcon,
-  BeakerIcon
+  BeakerIcon,
 } from '@heroicons/react/24/outline';
 
 const containerVariants = {
@@ -26,9 +26,9 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
-    }
-  }
+      staggerChildren: 0.1,
+    },
+  },
 };
 
 const itemVariants = {
@@ -38,21 +38,21 @@ const itemVariants = {
     y: 0,
     transition: {
       duration: 0.5,
-      ease: "easeOut"
-    }
-  }
+      ease: 'easeOut',
+    },
+  },
 };
 
 function ProjectDetails() {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const project = useSelector((state: RootState) => 
+  const project = useSelector((state: RootState) =>
     state.projects.projects.find(p => p.id === projectId)
   );
 
   if (!project) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50"
@@ -61,7 +61,7 @@ function ProjectDetails() {
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ type: "spring", duration: 0.5 }}
+            transition={{ type: 'spring', duration: 0.5 }}
             className="w-20 h-20 mx-auto mb-6 text-red-500 bg-red-100 rounded-full flex items-center justify-center"
           >
             <BeakerIcon className="w-10 h-10" />
@@ -104,10 +104,7 @@ function ProjectDetails() {
           animate="visible"
           className="space-y-6"
         >
-          <motion.div 
-            variants={itemVariants}
-            className="flex items-center space-x-4 mb-6"
-          >
+          <motion.div variants={itemVariants} className="flex items-center space-x-4 mb-6">
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
@@ -130,7 +127,7 @@ function ProjectDetails() {
           <motion.div variants={itemVariants}>
             <Tab.Group>
               <Tab.List className="flex space-x-2 rounded-xl bg-white/50 backdrop-blur-sm p-2 shadow-lg">
-                {tabs.map((tab) => (
+                {tabs.map(tab => (
                   <Tab
                     key={tab.name}
                     className={({ selected }) =>
@@ -201,7 +198,9 @@ function ProjectDetails() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-medium text-gray-900">Auto-assign Tasks</p>
-                            <p className="text-sm text-gray-500">Automatically assign tasks to available agents</p>
+                            <p className="text-sm text-gray-500">
+                              Automatically assign tasks to available agents
+                            </p>
                           </div>
                           <motion.div whileTap={{ scale: 0.9 }}>
                             <input
@@ -214,7 +213,9 @@ function ProjectDetails() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-medium text-gray-900">Require Review</p>
-                            <p className="text-sm text-gray-500">Require review before task completion</p>
+                            <p className="text-sm text-gray-500">
+                              Require review before task completion
+                            </p>
                           </div>
                           <motion.div whileTap={{ scale: 0.9 }}>
                             <input

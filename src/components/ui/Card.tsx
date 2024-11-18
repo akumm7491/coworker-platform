@@ -14,7 +14,7 @@ export const Card = ({
   className = '',
   hover = false,
   blur = false,
-  gradient = false
+  gradient = false,
 }: CardProps) => {
   return (
     <motion.div

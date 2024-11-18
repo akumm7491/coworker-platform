@@ -9,12 +9,7 @@ interface PageHeaderProps {
   actions?: ReactNode;
 }
 
-export function PageHeader({
-  title,
-  description,
-  icon,
-  actions
-}: PageHeaderProps) {
+export function PageHeader({ title, description, icon, actions }: PageHeaderProps) {
   return (
     <motion.div
       variants={animations.container}
@@ -36,19 +31,11 @@ export function PageHeader({
           <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">
             {title}
           </h1>
-          {description && (
-            <p className="text-lg text-gray-600">
-              {description}
-            </p>
-          )}
+          {description && <p className="text-lg text-gray-600">{description}</p>}
         </div>
       </motion.div>
 
-      {actions && (
-        <motion.div variants={animations.item}>
-          {actions}
-        </motion.div>
-      )}
+      {actions && <motion.div variants={animations.item}>{actions}</motion.div>}
     </motion.div>
   );
 }

@@ -1,73 +1,74 @@
-import express, { Request, Response, NextFunction } from 'express';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
+import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import passport from 'passport';
+import rateLimit from 'express-rate-limit';
 import { config } from './config/env.js';
-import { setupWebSocketHandlers } from './sockets/index.js';
-import authRoutes from './routes/auth.js';
-import projectRoutes from './routes/projects.js';
+import { createLogger } from './utils/logger.js';
+import { configurePassport } from './config/passport.js';
+import { initializeDatabase } from './config/database.js';
 import agentRoutes from './routes/agents.js';
-import { errorHandler } from './middleware/error.js';
-import { connectDB } from './config/database.js';
-import cookieParser from 'cookie-parser';
-import morgan from 'morgan';
+import projectRoutes from './routes/projects.js';
+import analyticsRoutes from './routes/analytics.js';
+import authRoutes from './routes/auth.js';
 
+const logger = createLogger('app');
 const app = express();
-const httpServer = createServer(app);
 
-// Only connect to DB and setup WebSocket in non-test environment
-if (process.env.NODE_ENV !== 'test') {
-  // Connect to MongoDB
-  connectDB();
-
-  // Setup WebSocket
-  const io = new Server(httpServer, {
-    cors: {
-      origin: config.corsOrigins,
-      methods: ['GET', 'POST', 'PUT', 'DELETE'],
-      credentials: true
-    }
-  });
-
-  // WebSocket setup
-  setupWebSocketHandlers(io);
-}
-
-// Middleware
-if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('dev')); // Add request logging in non-test environment
-}
-
-app.use(cors({
-  origin: config.corsOrigins,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-app.use(express.json());
-app.use(cookieParser());
-
-// Debug middleware (only in development)
-if (process.env.NODE_ENV === 'development') {
-  app.use((req: Request, _res: Response, next: NextFunction) => {
-    console.log(`${req.method} ${req.url}`);
-    console.log('Body:', req.body);
-    next();
-  });
-}
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/projects', projectRoutes);
-app.use('/api/agents', agentRoutes);
-
-// Health check endpoint
-app.get('/api/health', (_req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok' });
+// Initialize database
+initializeDatabase().catch(error => {
+  logger.error('Failed to initialize database:', error);
+  process.exit(1);
 });
 
-// Error handling
-app.use(errorHandler);
+// Security middleware
+app.use(helmet());
+app.use(
+  cors({
+    origin: config.cors.origins,
+    credentials: true,
+  }),
+);
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+  }),
+);
 
-export { app, httpServer };
+// Body parsing middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Compression middleware
+app.use(compression());
+
+// Initialize passport
+configurePassport(passport);
+app.use(passport.initialize());
+
+// Routes
+app.use('/api/agents', agentRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/auth', authRoutes);
+
+// Error handling middleware
+app.use((err: Error, req: express.Request, res: express.Response) => {
+  logger.error('Error:', err);
+  res.status(500).json({
+    status: 'error',
+    message: 'Internal server error',
+  });
+});
+
+// 404 handler
+app.use((req: express.Request, res: express.Response) => {
+  res.status(404).json({
+    status: 'error',
+    message: 'Not found',
+  });
+});
+
+export default app;

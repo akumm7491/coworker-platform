@@ -1,240 +1,159 @@
-import express from 'express';
-import { createServer } from 'http';
-import { Pool } from 'pg';
-import { Kafka } from 'kafkajs';
-import Redis from 'ioredis';
-import mongoose from 'mongoose';
-import { Client } from '@elastic/elasticsearch';
+import { Kafka, Producer, Consumer, EachMessagePayload } from 'kafkajs';
+import { createLogger } from '../../utils/logger.js';
 
-// PostgreSQL connection for commands
-const pgPool = new Pool({
-  connectionString: process.env.POSTGRES_URL,
-});
+const logger = createLogger('agent-service');
 
-// MongoDB connection for queries
-mongoose.connect(process.env.MONGODB_URL as string);
+interface AgentMessage {
+  type: string;
+  payload: unknown;
+}
 
-// Redis client for caching and rate limiting
-const redis = new Redis(process.env.REDIS_URL);
+interface AgentTask {
+  id: string;
+  agentId: string;
+  status?: 'assigned' | 'completed' | 'in_progress';
+  description?: string;
+}
 
-// Elasticsearch client for search
-const elasticsearch = new Client({
-  node: process.env.ELASTICSEARCH_URL,
-});
+class AgentService {
+  private kafka: Kafka;
+  private producer: Producer | null = null;
+  private consumer: Consumer | null = null;
 
-// Kafka setup
-const kafka = new Kafka({
-  clientId: 'agent-service',
-  brokers: (process.env.KAFKA_BROKERS || '').split(','),
-});
-
-const producer = kafka.producer();
-const consumer = kafka.consumer({ groupId: 'agent-service-group' });
-
-const app = express();
-app.use(express.json());
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'healthy' });
-});
-
-// Rate limiting middleware
-const rateLimiter = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const key = `ratelimit:${req.ip}`;
-  const limit = 100; // requests
-  const window = 60; // seconds
-
-  try {
-    const current = await redis.incr(key);
-    if (current === 1) {
-      await redis.expire(key, window);
-    }
-    
-    if (current > limit) {
-      return res.status(429).json({ error: 'Too many requests' });
-    }
-    
-    next();
-  } catch (error) {
-    console.error('Rate limiting error:', error);
-    next();
-  }
-};
-
-app.use(rateLimiter);
-
-// Agent Commands (PostgreSQL)
-app.post('/api/agents', async (req, res) => {
-  const client = await pgPool.connect();
-  try {
-    await client.query('BEGIN');
-    const { name, capabilities, projectId } = req.body;
-    
-    // Create agent in PostgreSQL
-    const result = await client.query(
-      'INSERT INTO agents (name, capabilities, project_id) VALUES ($1, $2, $3) RETURNING id',
-      [name, capabilities, projectId]
-    );
-    
-    // Emit agent.created event
-    await producer.send({
-      topic: 'coworker-platform.agents.events',
-      messages: [{
-        key: result.rows[0].id,
-        value: JSON.stringify({
-          type: 'agent.created',
-          data: { id: result.rows[0].id, name, capabilities, projectId },
-          timestamp: new Date().toISOString(),
-        }),
-      }],
+  constructor() {
+    this.kafka = new Kafka({
+      clientId: process.env.KAFKA_CLIENT_ID || 'agent-service',
+      brokers: process.env.KAFKA_BROKERS?.split(',') || ['localhost:9092'],
+      ssl: process.env.NODE_ENV === 'production',
+      sasl:
+        process.env.NODE_ENV === 'production'
+          ? {
+              mechanism: 'plain',
+              username: process.env.KAFKA_USERNAME || '',
+              password: process.env.KAFKA_PASSWORD || '',
+            }
+          : undefined,
     });
-
-    await client.query('COMMIT');
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error creating agent:', error);
-    res.status(500).json({ error: 'Failed to create agent' });
-  } finally {
-    client.release();
   }
-});
 
-// Agent Queries (MongoDB)
-app.get('/api/agents', async (req, res) => {
-  try {
-    const cacheKey = `agents:${JSON.stringify(req.query)}`;
-    const cachedData = await redis.get(cacheKey);
-    
-    if (cachedData) {
-      return res.json(JSON.parse(cachedData));
+  async initialize(): Promise<void> {
+    try {
+      this.producer = this.kafka.producer();
+      await this.producer.connect();
+      logger.info('Producer connected successfully');
+
+      await this.startConsumer();
+      logger.info('Consumer started successfully');
+    } catch (error) {
+      logger.error('Failed to initialize agent service:', error);
+      throw error;
     }
-
-    const agents = await mongoose.model('Agent').find(req.query)
-      .populate('projectId', 'name'); // Include project name in response
-    
-    await redis.set(cacheKey, JSON.stringify(agents), 'EX', 300); // Cache for 5 minutes
-    
-    res.json(agents);
-  } catch (error) {
-    console.error('Error fetching agents:', error);
-    res.status(500).json({ error: 'Failed to fetch agents' });
   }
-});
 
-// Agent Assignment Command
-app.post('/api/agents/:id/assign', async (req, res) => {
-  const client = await pgPool.connect();
-  try {
-    await client.query('BEGIN');
-    const { id } = req.params;
-    const { taskId } = req.body;
-    
-    // Check if agent is available
-    const agent = await client.query(
-      'SELECT * FROM agents WHERE id = $1 FOR UPDATE',
-      [id]
-    );
-    
-    if (!agent.rows[0]) {
-      return res.status(404).json({ error: 'Agent not found' });
-    }
-    
-    if (agent.rows[0].status !== 'available') {
-      return res.status(400).json({ error: 'Agent is not available' });
-    }
-    
-    // Assign task to agent
-    await client.query(
-      'UPDATE agents SET status = $1, current_task_id = $2 WHERE id = $3',
-      ['assigned', taskId, id]
-    );
-    
-    // Emit agent.assigned event
-    await producer.send({
-      topic: 'coworker-platform.agents.events',
-      messages: [{
-        key: id,
-        value: JSON.stringify({
-          type: 'agent.assigned',
-          data: { id, taskId },
-          timestamp: new Date().toISOString(),
-        }),
-      }],
+  private async startConsumer(): Promise<void> {
+    this.consumer = this.kafka.consumer({ groupId: 'agent-service-group' });
+    await this.consumer.connect();
+    await this.consumer.subscribe({ topic: 'agent-tasks', fromBeginning: true });
+
+    await this.consumer.run({
+      eachMessage: async payload => {
+        try {
+          await this.eachMessage(payload);
+        } catch (error) {
+          logger.error('Error processing message:', error);
+        }
+      },
     });
-
-    await client.query('COMMIT');
-    res.json({ message: 'Agent assigned successfully' });
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error assigning agent:', error);
-    res.status(500).json({ error: 'Failed to assign agent' });
-  } finally {
-    client.release();
   }
-});
 
-// Initialize Kafka consumer
-async function initializeKafka() {
-  await producer.connect();
-  await consumer.connect();
-  await consumer.subscribe({ 
-    topics: [
-      'coworker-platform.agents.events',
-      'coworker-platform.projects.events' // Listen for project events that might affect agents
-    ]
-  });
+  private async eachMessage({ message }: EachMessagePayload): Promise<void> {
+    if (!message.value) return;
 
-  await consumer.run({
-    eachMessage: async ({ topic, partition, message }) => {
-      if (!message.value) return;
-      
-      const event = JSON.parse(message.value.toString());
-      
-      switch (event.type) {
-        case 'agent.created':
-        case 'agent.assigned':
-          // Update read model in MongoDB
-          await mongoose.model('Agent').findOneAndUpdate(
-            { _id: event.data.id },
-            event.data,
-            { upsert: true }
-          );
-          
-          // Index in Elasticsearch for full-text search
-          await elasticsearch.index({
-            index: 'agents',
-            id: event.data.id,
-            document: event.data,
-          });
-          break;
-          
-        case 'project.deleted':
-          // Handle project deletion by updating affected agents
-          await mongoose.model('Agent').updateMany(
-            { projectId: event.data.id },
-            { $set: { status: 'unassigned', projectId: null } }
-          );
-          break;
+    try {
+      const agentMessage: AgentMessage = JSON.parse(message.value.toString());
+      await this.handleMessage(agentMessage);
+    } catch (error) {
+      logger.error('Failed to process message:', error);
+    }
+  }
+
+  private async handleMessage(message: AgentMessage): Promise<void> {
+    switch (message.type) {
+      case 'TASK_ASSIGNED':
+        await this.handleTaskAssigned(message.payload as AgentTask);
+        break;
+      case 'TASK_COMPLETED':
+        await this.handleTaskCompleted(message.payload as AgentTask);
+        break;
+      default:
+        logger.warn(`Unknown message type: ${message.type}`);
+    }
+  }
+
+  private async handleTaskAssigned(task: AgentTask): Promise<void> {
+    logger.info(`Task assigned: ${task.id} to agent: ${task.agentId}`);
+    // Implementation for task assignment
+  }
+
+  private async handleTaskCompleted(task: AgentTask): Promise<void> {
+    logger.info(`Task completed: ${task.id} by agent: ${task.agentId}`);
+    // Implementation for task completion
+  }
+
+  async assignTask(agentId: string, taskId: string): Promise<void> {
+    if (!this.producer) {
+      throw new Error('Producer not initialized');
+    }
+
+    const message: AgentMessage = {
+      type: 'TASK_ASSIGNED',
+      payload: {
+        id: taskId,
+        agentId,
+        status: 'assigned',
+      },
+    };
+
+    await this.producer.send({
+      topic: 'agent-tasks',
+      messages: [{ value: JSON.stringify(message) }],
+    });
+  }
+
+  async completeTask(agentId: string, taskId: string): Promise<void> {
+    if (!this.producer) {
+      throw new Error('Producer not initialized');
+    }
+
+    const message: AgentMessage = {
+      type: 'TASK_COMPLETED',
+      payload: {
+        id: taskId,
+        agentId,
+        status: 'completed',
+      },
+    };
+
+    await this.producer.send({
+      topic: 'agent-tasks',
+      messages: [{ value: JSON.stringify(message) }],
+    });
+  }
+
+  async shutdown(): Promise<void> {
+    try {
+      if (this.producer) {
+        await this.producer.disconnect();
       }
-    },
-  });
-}
-
-// Start the service
-async function start() {
-  try {
-    await initializeKafka();
-    const port = process.env.AGENT_SERVICE_PORT || 3003;
-    server.listen(port, () => {
-      console.log(`Agent service listening on port ${port}`);
-    });
-  } catch (error) {
-    console.error('Failed to start agent service:', error);
-    process.exit(1);
+      if (this.consumer) {
+        await this.consumer.disconnect();
+      }
+      logger.info('Agent service shut down successfully');
+    } catch (error) {
+      logger.error('Error shutting down agent service:', error);
+      throw error;
+    }
   }
 }
 
-const server = createServer(app);
-start();
+export const agentService = new AgentService();

@@ -1,13 +1,42 @@
-import { Server } from 'socket.io';
+import { Server as SocketServer } from 'socket.io';
+import { Server } from 'http';
+import { createLogger } from './utils/logger.js';
 
-export const setupWebSocketHandlers = (io: Server) => {
-  io.on('connection', (socket) => {
-    console.log('Client connected:', socket.id);
+const logger = createLogger('socket');
+
+export function initializeSocketServer(server: Server): SocketServer {
+  const io = new SocketServer(server, {
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST'],
+    },
+  });
+
+  io.on('connection', socket => {
+    logger.info('Client connected', { id: socket.id });
 
     socket.on('disconnect', () => {
-      console.log('Client disconnected:', socket.id);
+      logger.info('Client disconnected', { id: socket.id });
     });
 
-    // Add more socket event handlers here as needed
+    // Handle agent events
+    socket.on('agent:status', data => {
+      logger.info('Agent status update', { id: socket.id, data });
+      io.emit('agent:status:update', data);
+    });
+
+    // Handle project events
+    socket.on('project:update', data => {
+      logger.info('Project update', { id: socket.id, data });
+      io.emit('project:updated', data);
+    });
+
+    // Handle task events
+    socket.on('task:update', data => {
+      logger.info('Task update', { id: socket.id, data });
+      io.emit('task:updated', data);
+    });
   });
-};
+
+  return io;
+}

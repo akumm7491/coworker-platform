@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router-dom';
 
 function Sidebar() {
   return (
@@ -10,15 +10,21 @@ function Sidebar() {
         <Link to="/agents" className="flex items-center px-6 py-2 text-gray-100 hover:bg-gray-700">
           Agents
         </Link>
-        <Link to="/projects" className="flex items-center px-6 py-2 text-gray-100 hover:bg-gray-700">
+        <Link
+          to="/projects"
+          className="flex items-center px-6 py-2 text-gray-100 hover:bg-gray-700"
+        >
           Projects
         </Link>
-        <Link to="/analytics" className="flex items-center px-6 py-2 text-gray-100 hover:bg-gray-700">
+        <Link
+          to="/analytics"
+          className="flex items-center px-6 py-2 text-gray-100 hover:bg-gray-700"
+        >
           Analytics
         </Link>
       </nav>
     </aside>
-  )
+  );
 }
 
-export default Sidebar
+export default Sidebar;

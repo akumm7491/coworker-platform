@@ -1,86 +1,88 @@
-import { Pool } from 'pg';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { Client } from 'pg';
+import { createLogger } from '../utils/logger.js';
 
-const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL,
-});
+const logger = createLogger('migrate');
 
-// Table to track migrations
-const createMigrationsTable = `
-CREATE TABLE IF NOT EXISTS migrations (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    applied_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-`;
+async function connectToDatabase(): Promise<Client> {
+  const client = new Client({
+    connectionString: process.env.POSTGRES_URL,
+  });
 
-async function getMigrationsDir() {
-  return path.join(process.cwd(), 'migrations');
+  try {
+    await client.connect();
+    logger.info('Connected to database');
+    return client;
+  } catch (error) {
+    logger.error('Failed to connect to database:', error);
+    throw error;
+  }
 }
 
-async function getAppliedMigrations(): Promise<string[]> {
-  const result = await pool.query(
-    'SELECT name FROM migrations ORDER BY id ASC'
-  );
+async function getMigrations(client: Client): Promise<string[]> {
+  const result = await client.query('SELECT name FROM migrations ORDER BY id ASC');
   return result.rows.map(row => row.name);
 }
 
-async function markMigrationAsApplied(name: string) {
-  await pool.query(
-    'INSERT INTO migrations (name) VALUES ($1)',
-    [name]
-  );
+async function recordMigration(client: Client, name: string): Promise<void> {
+  await client.query('INSERT INTO migrations (name) VALUES ($1)', [name]);
 }
 
-async function migrate() {
-  const client = await pool.connect();
-  
+async function runMigration(client: Client, name: string): Promise<void> {
+  const migrationFile = await import(`../migrations/${name}`);
+  const { up } = migrationFile;
+
+  if (typeof up !== 'function') {
+    throw new Error(`Migration ${name} does not export an 'up' function`);
+  }
+
+  try {
+    await client.query('BEGIN');
+    await up(client);
+    await recordMigration(client, name);
+    await client.query('COMMIT');
+    logger.info(`Successfully ran migration: ${name}`);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    logger.error(`Failed to run migration ${name}:`, error);
+    throw error;
+  }
+}
+
+async function main(): Promise<void> {
+  const client = await connectToDatabase();
+
   try {
     // Create migrations table if it doesn't exist
-    await client.query(createMigrationsTable);
-    
-    // Get list of applied migrations
-    const appliedMigrations = await getAppliedMigrations();
-    
-    // Get all migration files
-    const migrationsDir = await getMigrationsDir();
-    const files = await fs.readdir(migrationsDir);
-    const migrationFiles = files.filter(f => f.endsWith('.sql')).sort();
-    
-    // Apply new migrations
-    for (const file of migrationFiles) {
-      if (!appliedMigrations.includes(file)) {
-        console.log(`Applying migration: ${file}`);
-        
-        const filePath = path.join(migrationsDir, file);
-        const sql = await fs.readFile(filePath, 'utf-8');
-        
-        await client.query('BEGIN');
-        
-        try {
-          await client.query(sql);
-          await markMigrationAsApplied(file);
-          await client.query('COMMIT');
-          console.log(`Successfully applied migration: ${file}`);
-        } catch (error) {
-          await client.query('ROLLBACK');
-          console.error(`Error applying migration ${file}:`, error);
-          throw error;
-        }
-      }
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS migrations (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Get list of completed migrations
+    const completedMigrations = await getMigrations(client);
+
+    // Get list of migration files
+    const migrationFiles = await import('../migrations/index');
+    const pendingMigrations = migrationFiles.default.filter(
+      name => !completedMigrations.includes(name),
+    );
+
+    // Run pending migrations
+    for (const migration of pendingMigrations) {
+      await runMigration(client, migration);
     }
-    
-    console.log('All migrations applied successfully');
+
+    logger.info('All migrations completed successfully');
+  } catch (error) {
+    logger.error('Migration failed:', error);
+    process.exit(1);
   } finally {
-    client.release();
+    await client.end();
   }
 }
 
 // Run migrations
-migrate()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error('Migration failed:', error);
-    process.exit(1);
-  });
+main();

@@ -5,148 +5,152 @@ import { SectionHeading } from './SectionHeading';
 
 const stats = [
   {
-    icon: UserGroupIcon,
+    id: 1,
+    name: 'Active Users',
     value: '10,000+',
-    label: 'Active Developers',
-    color: 'from-[#2563eb] to-[#7c3aed]'
+    icon: UserGroupIcon,
   },
   {
-    icon: CodeBracketIcon,
+    id: 2,
+    name: 'Lines of Code',
     value: '1M+',
-    label: 'Lines of Code Generated',
-    color: 'from-[#7c3aed] to-[#06b6d4]'
+    icon: CodeBracketIcon,
   },
   {
+    id: 3,
+    name: 'Hours Saved',
+    value: '100,000+',
     icon: ClockIcon,
-    value: '500K+',
-    label: 'Development Hours Saved',
-    color: 'from-[#06b6d4] to-[#2563eb]'
   },
   {
-    icon: StarIcon,
+    id: 4,
+    name: 'User Rating',
     value: '4.9/5',
-    label: 'Average Rating',
-    color: 'from-[#2563eb] to-[#7c3aed]'
-  }
+    icon: StarIcon,
+  },
 ];
 
 const testimonials = [
   {
-    quote: "This platform has transformed how we approach development. The AI agents are like having an entire team of senior developers at your fingertips.",
-    author: "Sarah Chen",
-    role: "CTO, TechForward",
-    avatar: "SC"
+    id: 1,
+    name: 'Sarah Chen',
+    role: 'Senior Developer at TechCorp',
+    quote:
+      'This platform has revolutionized how we handle our development workflow. The AI integration is seamless.',
+    image: '/testimonials/sarah.jpg',
   },
   {
-    quote: "The autonomous agents have cut our development time in half. They're not just tools, they're true collaborators in our development process.",
-    author: "Michael Rodriguez",
-    role: "Lead Developer, InnovateCorp",
-    avatar: "MR"
+    id: 2,
+    name: 'Michael Rodriguez',
+    role: 'Tech Lead at InnovateLabs',
+    quote: 'The autonomous agent features have saved our team countless hours. Highly recommended!',
+    image: '/testimonials/michael.jpg',
   },
   {
-    quote: "I was skeptical at first, but the results speak for themselves. The platform has become an indispensable part of our workflow.",
-    author: "Emily Watson",
-    role: "Engineering Manager, FutureTech",
-    avatar: "EW"
-  }
+    id: 3,
+    name: 'Emily Thompson',
+    role: 'CTO at FutureTech',
+    quote: 'A game-changer for our development process. The AI capabilities are truly impressive.',
+    image: '/testimonials/emily.jpg',
+  },
 ];
 
 const companies = [
   {
+    id: 1,
     name: 'TechCorp',
-    logo: (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-2xl font-bold bg-gradient-to-r from-[#2563eb] to-[#7c3aed] bg-clip-text text-transparent">
-          TechCorp
-        </div>
-      </div>
-    )
+    logo: '/companies/techcorp.svg',
   },
   {
+    id: 2,
     name: 'InnovateLabs',
-    logo: (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-2xl font-bold bg-gradient-to-r from-[#7c3aed] to-[#06b6d4] bg-clip-text text-transparent">
-          InnovateLabs
-        </div>
-      </div>
-    )
+    logo: '/companies/innovatelabs.svg',
   },
   {
-    name: 'FutureAI',
-    logo: (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-2xl font-bold bg-gradient-to-r from-[#06b6d4] to-[#2563eb] bg-clip-text text-transparent">
-          FutureAI
-        </div>
-      </div>
-    )
+    id: 3,
+    name: 'FutureTech',
+    logo: '/companies/futuretech.svg',
   },
   {
-    name: 'CodeGenius',
-    logo: (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-2xl font-bold bg-gradient-to-r from-[#2563eb] to-[#7c3aed] bg-clip-text text-transparent">
-          CodeGenius
-        </div>
-      </div>
-    )
-  }
+    id: 4,
+    name: 'NextGen',
+    logo: '/companies/nextgen.svg',
+  },
 ];
 
-export function SocialProof() {
-  return (
-    <section className="py-24 relative">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0f172a] via-[#1e293b] to-[#0f172a] opacity-50" />
-      <div className="container mx-auto px-4 relative">
-        {/* Stats */}
-        <div className="grid md:grid-cols-4 gap-8 mb-24">
-          {stats.map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.1 }}
-              className="text-center"
-            >
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-r from-[#1e293b] to-[#334155] mb-6">
-                <stat.icon className="w-8 h-8 text-[#f8fafc]" />
-              </div>
-              <div className={`text-4xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent mb-2`}>
-                {stat.value}
-              </div>
-              <div className="text-gray-400">{stat.label}</div>
-            </motion.div>
-          ))}
-        </div>
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
 
-        {/* Testimonials */}
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+  },
+};
+
+export const SocialProof = () => {
+  return (
+    <section className="py-24 bg-gray-900">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeading
           title="Trusted by Developers"
-          subtitle="Join thousands of developers who are already building the future with AI"
+          subtitle="Join thousands of developers who are already using our platform"
         />
 
-        <div className="grid md:grid-cols-3 gap-8 mb-24">
-          {testimonials.map((testimonial, index) => (
+        {/* Stats */}
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          {stats.map(stat => (
             <motion.div
-              key={testimonial.author}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-[#1e293b] rounded-2xl p-8 border border-[#334155] hover:border-[#7c3aed]/30 transition-all duration-300"
+              key={stat.id}
+              variants={itemVariants}
+              className="bg-gray-800 rounded-lg p-6 text-center"
             >
-              <div className="flex items-center mb-6">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#2563eb] to-[#7c3aed] flex items-center justify-center text-white font-semibold mr-4">
-                  {testimonial.avatar}
-                </div>
-                <div>
-                  <div className="font-semibold text-[#f8fafc]">{testimonial.author}</div>
+              <div className="flex justify-center mb-4">
+                <stat.icon className="h-8 w-8 text-blue-400" />
+              </div>
+              <div className="text-3xl font-bold text-white mb-2">{stat.value}</div>
+              <div className="text-gray-400">{stat.name}</div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Testimonials */}
+        <div className="mt-24 grid grid-cols-1 gap-8 md:grid-cols-3">
+          {testimonials.map(testimonial => (
+            <motion.div
+              key={testimonial.id}
+              variants={itemVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="bg-gray-800 rounded-lg p-6"
+            >
+              <div className="flex items-center mb-4">
+                <img
+                  src={testimonial.image}
+                  alt={testimonial.name}
+                  className="h-12 w-12 rounded-full"
+                />
+                <div className="ml-4">
+                  <div className="text-white font-semibold">{testimonial.name}</div>
                   <div className="text-sm text-gray-400">{testimonial.role}</div>
                 </div>
               </div>
-              <p className="text-gray-300 italic">"{testimonial.quote}"</p>
+              <p className="text-gray-300 italic">&quot;{testimonial.quote}&quot;</p>
             </motion.div>
           ))}
         </div>
@@ -154,24 +158,20 @@ export function SocialProof() {
         {/* Company Logos */}
         <div>
           <div className="text-center text-gray-400 mb-12 text-lg">
-            Trusted by innovative companies worldwide
+            Empowering teams at leading companies
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {companies.map((company, index) => (
-              <motion.div
-                key={company.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="h-24 bg-[#1e293b] rounded-xl border border-[#334155] hover:border-[#7c3aed]/30 transition-all duration-300"
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+            {companies.map(company => (
+              <div
+                key={company.id}
+                className="col-span-1 flex justify-center items-center grayscale opacity-50 hover:opacity-100 transition-opacity"
               >
-                {company.logo}
-              </motion.div>
+                <img className="h-12" src={company.logo} alt={company.name} />
+              </div>
             ))}
           </div>
         </div>
       </div>
     </section>
   );
-}
+};

@@ -1,16 +1,14 @@
+import 'reflect-metadata';
+import { createServer } from 'http';
+import app from './app.js';
 import { config } from './config/env.js';
-import { app, httpServer } from './app.js';
+import { createLogger } from './utils/logger.js';
 
-const PORT = config.port;
+const logger = createLogger('server');
+const server = createServer(app);
 
-// Start server (only in non-test environment)
-if (process.env.NODE_ENV !== 'test') {
-  httpServer.listen(PORT, () => {
-    console.log(`
-🚀 Server is running!
-🔉 Listening on port ${PORT}
-📱 Connect to WebSocket at ws://localhost:${PORT}/api/ws
-🌍 REST API available at http://localhost:${PORT}/api
-    `);
-  });
-}
+server.listen(config.port, () => {
+  logger.info(`Server is running on port ${config.port}`);
+});
+
+export default server;

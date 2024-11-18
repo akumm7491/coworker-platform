@@ -1,76 +1,115 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import passport from 'passport';
 import { config } from '../config/env.js';
+import { AppError } from './error.js';
+import logger from '../config/logger.js';
 import { User } from '../models/User.js';
 
-export const createToken = (userId: string): string => {
+interface TokenPayload {
+  id: string;
+  email: string;
+}
+
+// Create JWT token
+export const createToken = (userId: string): { accessToken: string; refreshToken: string } => {
   try {
-    return jwt.sign({ id: userId }, config.jwt.secret, {
-      expiresIn: config.jwt.expiresIn
+    const accessToken = jwt.sign({ id: userId }, config.jwt.secret, {
+      expiresIn: '1h', // Short-lived access token
     });
+
+    const refreshToken = jwt.sign({ id: userId }, config.jwt.secret, {
+      expiresIn: '7d', // Longer-lived refresh token
+    });
+
+    return { accessToken, refreshToken };
   } catch (error) {
-    console.error('Error creating token:', error);
-    throw new Error('Error creating authentication token');
+    logger.error('Error creating tokens:', error);
+    throw new AppError('Error creating authentication tokens', 500);
   }
 };
 
-export const protect = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    let token: string | undefined;
-
-    // Get token from Authorization header
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer')) {
-      token = authHeader.split(' ')[1];
-    }
-
-    // Check if token exists
-    if (!token) {
-      console.log('No token provided');
-      res.status(401).json({
-        success: false,
-        error: 'Not authorized to access this route'
-      });
-      return;
-    }
-
-    try {
-      // Verify token
-      const decoded = jwt.verify(token, config.jwt.secret) as { id: string };
-      console.log('Token decoded:', decoded);
-
-      // Get user from token
-      const user = await User.findById(decoded.id);
-      if (!user) {
-        console.log('User not found for token:', decoded.id);
-        res.status(401).json({
-          success: false,
-          error: 'User not found'
-        });
-        return;
+// Middleware to protect routes
+export const protect = (req: Request, res: Response, next: NextFunction): void => {
+  passport.authenticate(
+    'jwt',
+    { session: false },
+    (err: Error | null, user: User | false, info: { name?: string } | null) => {
+      if (err) {
+        logger.error('Auth error:', err);
+        return next(new AppError('Authentication error', 401));
       }
 
-      // Add user to request object
-      req.user = {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email
-      };
+      if (!user) {
+        if (info instanceof Error) {
+          if (info.name === 'TokenExpiredError') {
+            return next(new AppError('Token expired', 401));
+          }
+          if (info.name === 'JsonWebTokenError') {
+            return next(new AppError('Invalid token', 401));
+          }
+        }
+        return next(new AppError('Not authorized', 401));
+      }
+
+      req.user = user;
       next();
-    } catch (error) {
-      console.error('Token verification error:', error);
-      res.status(401).json({
-        success: false,
-        error: 'Not authorized to access this route'
-      });
-      return;
+    },
+  )(req, res, next);
+};
+
+// Middleware to authenticate login
+export const authenticateLogin = (req: Request, res: Response, next: NextFunction): void => {
+  passport.authenticate(
+    'local',
+    { session: false },
+    (err: Error | null, user: User | false, info: { message?: string } | null) => {
+      if (err) {
+        logger.error('Login error:', err);
+        return next(new AppError('Login error', 500));
+      }
+
+      if (!user) {
+        return next(new AppError(info?.message || 'Invalid credentials', 401));
+      }
+
+      req.user = user;
+      next();
+    },
+  )(req, res, next);
+};
+
+// Middleware to refresh token
+export const refreshToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      throw new AppError('Refresh token is required', 400);
     }
-  } catch (error) {
-    console.error('Protect middleware error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Server error in authentication'
+
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, config.jwt.secret) as TokenPayload;
+
+    // Create new tokens
+    const tokens = createToken(decoded.id);
+
+    res.json({
+      success: true,
+      ...tokens,
     });
-    return;
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      return next(new AppError('Refresh token expired', 401));
+    }
+    if (error instanceof jwt.JsonWebTokenError) {
+      return next(new AppError('Invalid refresh token', 401));
+    }
+    logger.error('Error refreshing token:', error);
+    next(new AppError('Error refreshing token', 500));
   }
 };

@@ -6,7 +6,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
+  ResponsiveContainer,
 } from 'recharts';
 import {
   ChartBarIcon,
@@ -15,22 +15,16 @@ import {
   BeakerIcon,
   ArrowTrendingUpIcon,
   CpuChipIcon,
-  RocketLaunchIcon
+  RocketLaunchIcon,
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
-import {
-  PageContainer,
-  PageHeader,
-  Card,
-  EmptyState,
-  Button
-} from '@/components/ui';
+import { PageContainer, PageHeader, Card, EmptyState, Button } from '@/components/ui';
 import { PieChartCard } from '@/components/charts/PieChartCard';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 
 function Analytics() {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { agents = [] } = useSelector((state: RootState) => state.agents);
   const { projects = [] } = useSelector((state: RootState) => state.projects);
@@ -38,7 +32,7 @@ function Analytics() {
   const resourceData = [
     { name: 'CPU Usage', value: 65, color: '#818CF8' },
     { name: 'Memory Used', value: 45, color: '#34D399' },
-    { name: 'Storage Used', value: 30, color: '#F472B6' }
+    { name: 'Storage Used', value: 30, color: '#F472B6' },
   ];
 
   const performanceData = [
@@ -53,30 +47,13 @@ function Analytics() {
     return (
       <PageContainer>
         <div className="flex items-center justify-center min-h-[60vh]">
-          <motion.div 
+          <motion.div
             className="flex flex-col items-center space-y-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
           >
-            <motion.div
-              animate={{ 
-                rotate: 360,
-                transition: { duration: 2, repeat: Infinity, ease: "linear" }
-              }}
-              className="w-16 h-16 text-indigo-600"
-            >
-              <BeakerIcon className="w-full h-full" />
-            </motion.div>
-            <motion.p
-              animate={{ 
-                opacity: [1, 0.5, 1],
-                transition: { duration: 1.5, repeat: Infinity }
-              }}
-              className="text-indigo-600 font-medium"
-            >
-              Loading analytics data...
-            </motion.p>
+            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-gray-600">Loading analytics data...</p>
           </motion.div>
         </div>
       </PageContainer>
@@ -85,47 +62,33 @@ function Analytics() {
 
   if (error) {
     return (
-      <PageContainer variant="error">
-        <EmptyState
-          icon={BeakerIcon}
-          title="Error Loading Analytics"
-          description={error}
-          action={
-            <Button
-              variant="primary"
-              leftIcon={<ArrowTrendingUpIcon className="w-5 h-5" />}
-              onClick={() => setError(null)}
-            >
-              Try Again
-            </Button>
-          }
-        />
+      <PageContainer>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <EmptyState
+            icon={BeakerIcon}
+            title="Error Loading Analytics"
+            description={error}
+            action={
+              <Button variant="primary" onClick={() => setError(null)}>
+                Try Again
+              </Button>
+            }
+          />
+        </div>
       </PageContainer>
     );
   }
 
-  if (agents.length === 0 || projects.length === 0) {
+  if (!agents.length && !projects.length) {
     return (
       <PageContainer>
-        <PageHeader
-          title="Analytics"
-          description="Monitor your autonomous agent platform performance"
-          icon={<ChartBarIcon className="w-8 h-8 text-indigo-600" />}
-        />
-        <EmptyState
-          icon={RocketLaunchIcon}
-          title="No Data Available"
-          description="Start by creating some agents and projects to see analytics data."
-          action={
-            <Button
-              variant="primary"
-              leftIcon={<CpuChipIcon className="w-5 h-5" />}
-              onClick={() => {/* Navigate to agents/projects */}}
-            >
-              Get Started
-            </Button>
-          }
-        />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <EmptyState
+            icon={ChartBarIcon}
+            title="No Data Available"
+            description="Start by creating some agents or projects to see analytics."
+          />
+        </div>
       </PageContainer>
     );
   }
@@ -133,120 +96,174 @@ function Analytics() {
   return (
     <PageContainer>
       <PageHeader
-        title="Analytics"
-        description="Monitor your autonomous agent platform performance"
-        icon={<ChartBarIcon className="w-8 h-8 text-indigo-600" />}
+        title="Analytics Dashboard"
+        description="Monitor your autonomous agents and project performance"
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card hover blur className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-900">System Performance</h3>
-            <ArrowTrendingUpIcon className="w-6 h-6 text-indigo-600" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <RocketLaunchIcon className="w-6 h-6 text-blue-600" />
+            </div>
           </div>
-          <div className="h-64">
+          <h3 className="text-2xl font-semibold text-gray-900">{agents.length}</h3>
+          <p className="text-gray-600">Active Agents</p>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <CheckCircleIcon className="w-6 h-6 text-green-600" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-semibold text-gray-900">{projects.length}</h3>
+          <p className="text-gray-600">Total Projects</p>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <CpuChipIcon className="w-6 h-6 text-purple-600" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-semibold text-gray-900">98.5%</h3>
+          <p className="text-gray-600">System Uptime</p>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2 bg-pink-100 rounded-lg">
+              <ArrowTrendingUpIcon className="w-6 h-6 text-pink-600" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-semibold text-gray-900">92%</h3>
+          <p className="text-gray-600">Task Success Rate</p>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">Performance Trends</h3>
+          <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={performanceData}>
-                <defs>
-                  <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#818CF8" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#818CF8" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorEfficiency" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#34D399" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#34D399" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                    backdropFilter: 'blur(8px)',
-                    borderRadius: '0.75rem',
-                    border: 'none',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                  }}
-                />
+                <Tooltip />
                 <Line
                   type="monotone"
                   dataKey="tasks"
                   stroke="#818CF8"
-                  strokeWidth={3}
-                  name="Tasks"
-                  dot={{ strokeWidth: 2 }}
-                  activeDot={{ r: 6, strokeWidth: 2 }}
-                  fillOpacity={1}
-                  fill="url(#colorTasks)"
+                  strokeWidth={2}
+                  dot={{ fill: '#818CF8' }}
                 />
                 <Line
                   type="monotone"
                   dataKey="efficiency"
                   stroke="#34D399"
-                  strokeWidth={3}
-                  name="Efficiency"
-                  dot={{ strokeWidth: 2 }}
-                  activeDot={{ r: 6, strokeWidth: 2 }}
-                  fillOpacity={1}
-                  fill="url(#colorEfficiency)"
+                  strokeWidth={2}
+                  dot={{ fill: '#34D399' }}
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
-        <PieChartCard
-          title="Resource Utilization"
-          icon={<CpuChipIcon className="w-6 h-6 text-indigo-600" />}
-          data={resourceData}
-        />
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">Resource Utilization</h3>
+          <div className="h-80">
+            <PieChartCard title="Resource Utilization" data={resourceData} />
+          </div>
+        </Card>
       </div>
 
-      <Card hover blur className="p-6 mt-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-gray-900">Agent Performance Metrics</h3>
-          <RocketLaunchIcon className="w-6 h-6 text-indigo-600" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4"
-          >
-            <div className="flex items-center space-x-3">
-              <CheckCircleIcon className="w-8 h-8 text-indigo-600" />
-              <div>
-                <h4 className="text-sm font-medium text-indigo-900">Task Completion</h4>
-                <p className="text-2xl font-bold text-indigo-600">92%</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="flex items-start space-x-3">
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <ClockIcon className="w-4 h-4 text-gray-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Task Completed</p>
+                  <p className="text-sm text-gray-500">Agent A-{i} completed data analysis</p>
+                  <p className="text-xs text-gray-400">2 hours ago</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">System Health</h3>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium text-gray-700">CPU Usage</span>
+                <span className="text-sm text-gray-500">65%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-blue-500 h-2 rounded-full" style={{ width: '65%' }} />
               </div>
             </div>
-          </motion.div>
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-4"
-          >
-            <div className="flex items-center space-x-3">
-              <ClockIcon className="w-8 h-8 text-emerald-600" />
-              <div>
-                <h4 className="text-sm font-medium text-emerald-900">Response Time</h4>
-                <p className="text-2xl font-bold text-emerald-600">1.2s</p>
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium text-gray-700">Memory</span>
+                <span className="text-sm text-gray-500">45%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: '45%' }} />
               </div>
             </div>
-          </motion.div>
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="bg-gradient-to-br from-rose-50 to-pink-50 rounded-xl p-4"
-          >
-            <div className="flex items-center space-x-3">
-              <ArrowTrendingUpIcon className="w-8 h-8 text-rose-600" />
-              <div>
-                <h4 className="text-sm font-medium text-rose-900">Success Rate</h4>
-                <p className="text-2xl font-bold text-rose-600">95%</p>
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium text-gray-700">Storage</span>
+                <span className="text-sm text-gray-500">30%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-pink-500 h-2 rounded-full" style={{ width: '30%' }} />
               </div>
             </div>
-          </motion.div>
-        </div>
-      </Card>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Quick Stats</h3>
+          </div>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <RocketLaunchIcon className="w-5 h-5 text-gray-400" />
+                <span className="text-sm text-gray-600">Active Tasks</span>
+              </div>
+              <span className="text-sm font-medium text-gray-900">24</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <CheckCircleIcon className="w-5 h-5 text-gray-400" />
+                <span className="text-sm text-gray-600">Completed Today</span>
+              </div>
+              <span className="text-sm font-medium text-gray-900">18</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <CpuChipIcon className="w-5 h-5 text-gray-400" />
+                <span className="text-sm text-gray-600">Processing Power</span>
+              </div>
+              <span className="text-sm font-medium text-gray-900">12.4 TFLOPs</span>
+            </div>
+          </div>
+        </Card>
+      </div>
     </PageContainer>
   );
 }

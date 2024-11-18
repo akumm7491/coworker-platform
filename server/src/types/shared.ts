@@ -60,5 +60,5 @@ export interface AuthResponse {
 export interface ErrorResponse {
   status: number;
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
 }

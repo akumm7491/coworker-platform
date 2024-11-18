@@ -8,12 +8,12 @@ interface TypedTextProps {
   delayBetweenWords?: number;
 }
 
-export function TypedText({ 
-  words, 
+export function TypedText({
+  words,
   className = '',
   typingSpeed = 100,
   deletingSpeed = 50,
-  delayBetweenWords = 2000 
+  delayBetweenWords = 2000,
 }: TypedTextProps) {
   const [displayText, setDisplayText] = useState('');
   const [wordIndex, setWordIndex] = useState(0);
@@ -44,7 +44,7 @@ export function TypedText({
       }, typingSpeed);
     } else {
       if (displayText === '') {
-        setWordIndex((prev) => (prev + 1) % words.length);
+        setWordIndex(prev => (prev + 1) % words.length);
         setIsTyping(true);
         return;
       }
@@ -55,7 +55,16 @@ export function TypedText({
     }
 
     return () => clearTimeout(timer);
-  }, [displayText, wordIndex, isTyping, isPaused, words, typingSpeed, deletingSpeed, delayBetweenWords]);
+  }, [
+    displayText,
+    wordIndex,
+    isTyping,
+    isPaused,
+    words,
+    typingSpeed,
+    deletingSpeed,
+    delayBetweenWords,
+  ]);
 
   return (
     <span className={`inline-flex items-center ${className}`}>

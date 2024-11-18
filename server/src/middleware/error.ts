@@ -1,67 +1,91 @@
-import { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
+import { Request, Response, NextFunction } from 'express';
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('error-handler');
 
 export class AppError extends Error {
-  constructor(
-    public statusCode: number,
-    public message: string,
-    public isOperational = true
-  ) {
+  statusCode: number;
+  status: string;
+  isOperational: boolean;
+
+  constructor(message: string, statusCode: number) {
     super(message);
-    Object.setPrototypeOf(this, AppError.prototype);
+    this.statusCode = statusCode;
+    this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
+    this.isOperational = true;
+
+    Error.captureStackTrace(this, this.constructor);
   }
 }
 
-export const errorHandler: ErrorRequestHandler = (
+interface ErrorResponse {
+  success: boolean;
+  error: {
+    message: string;
+    code?: number;
+    stack?: string;
+  };
+}
+
+export const errorHandler = (
   err: Error | AppError,
   req: Request,
-  res: Response,
-  _next: NextFunction
-) => {
-  console.error('Error occurred:', {
+  res: Response<ErrorResponse>,
+  _next: NextFunction,
+): void => {
+  logger.error('Error:', {
     name: err.name,
     message: err.message,
     stack: err.stack,
     path: req.path,
     method: req.method,
-    body: req.body,
-    headers: req.headers
   });
 
   if (err instanceof AppError) {
+    // Operational, trusted error: send message to client
     res.status(err.statusCode).json({
       success: false,
-      error: err.message,
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+      error: {
+        message: err.message,
+        code: err.statusCode,
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+      },
     });
     return;
   }
 
-  // Handle Mongoose validation errors
+  // TypeORM errors
+  if (err.name === 'QueryFailedError') {
+    res.status(400).json({
+      success: false,
+      error: {
+        message: 'Database query failed',
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+      },
+    });
+    return;
+  }
+
+  // Mongoose validation error
   if (err.name === 'ValidationError') {
     res.status(400).json({
       success: false,
-      error: 'Validation Error',
-      details: err.message,
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+      error: {
+        message: 'Invalid input data',
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+      },
     });
     return;
   }
 
-  // Handle Mongoose duplicate key errors
-  if (err.name === 'MongoServerError' && (err as any).code === 11000) {
-    const field = Object.keys((err as any).keyValue)[0];
-    res.status(400).json({
-      success: false,
-      error: `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`
-    });
-    return;
-  }
-
-  // Handle JWT errors
+  // JWT errors
   if (err.name === 'JsonWebTokenError') {
     res.status(401).json({
       success: false,
-      error: 'Invalid token'
+      error: {
+        message: 'Invalid token',
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+      },
     });
     return;
   }
@@ -69,18 +93,20 @@ export const errorHandler: ErrorRequestHandler = (
   if (err.name === 'TokenExpiredError') {
     res.status(401).json({
       success: false,
-      error: 'Token expired'
+      error: {
+        message: 'Token expired',
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+      },
     });
     return;
   }
 
-  // Handle other errors
+  // Default error
   res.status(500).json({
     success: false,
-    error: 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && {
-      message: err.message,
-      stack: err.stack
-    })
+    error: {
+      message: 'Something went wrong',
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    },
   });
 };

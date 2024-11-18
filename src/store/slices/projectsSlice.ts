@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { Project } from '@/types';
-import * as api from '@/services/api';
+import { Project } from '@/types/project';
+import api from '@/services/api';
 
 interface ProjectsState {
   projects: Project[];
@@ -11,26 +11,23 @@ interface ProjectsState {
 const initialState: ProjectsState = {
   projects: [],
   loading: false,
-  error: null
+  error: null,
 };
 
-export const fetchProjects = createAsyncThunk(
-  'projects/fetchProjects',
-  async () => {
-    try {
-      return await api.getProjects();
-    } catch (error) {
-      console.error('Error fetching projects:', error);
-      throw error;
-    }
+export const fetchProjects = createAsyncThunk('projects/fetchProjects', async () => {
+  try {
+    return await api.getProjects();
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+    throw error;
   }
-);
+});
 
 export const createProject = createAsyncThunk(
   'projects/createProject',
-  async (project: Partial<Project>) => {
+  async (projectData: Partial<Project>) => {
     try {
-      return await api.createProject(project);
+      return await api.createProject(projectData);
     } catch (error) {
       console.error('Error creating project:', error);
       throw error;
@@ -38,12 +35,24 @@ export const createProject = createAsyncThunk(
   }
 );
 
+export const deleteProject = createAsyncThunk(
+  'projects/deleteProject',
+  async (projectId: string) => {
+    try {
+      await api.deleteProject(projectId);
+      return projectId;
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      throw error;
+    }
+  }
+);
+
 export const updateProject = createAsyncThunk(
   'projects/updateProject',
-  async ({ id, data }: { id: string; data: Partial<Project> }) => {
+  async (projectData: Partial<Project>) => {
     try {
-      const updatedProject = await api.updateProject(id, data);
-      return { id, data: updatedProject };
+      return await api.updateProject(projectData);
     } catch (error) {
       console.error('Error updating project:', error);
       throw error;
@@ -54,10 +63,14 @@ export const updateProject = createAsyncThunk(
 const projectsSlice = createSlice({
   name: 'projects',
   initialState,
-  reducers: {},
-  extraReducers: (builder) => {
+  reducers: {
+    setProjects(state, action: PayloadAction<Project[]>) {
+      state.projects = action.payload;
+    },
+  },
+  extraReducers: builder => {
     builder
-      .addCase(fetchProjects.pending, (state) => {
+      .addCase(fetchProjects.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -69,7 +82,7 @@ const projectsSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || 'Failed to fetch projects';
       })
-      .addCase(createProject.pending, (state) => {
+      .addCase(createProject.pending, state => {
         state.loading = true;
         state.error = null;
       })
@@ -81,23 +94,38 @@ const projectsSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || 'Failed to create project';
       })
-      .addCase(updateProject.pending, (state) => {
+      .addCase(deleteProject.pending, state => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteProject.fulfilled, (state, action) => {
+        state.loading = false;
+        state.projects = state.projects.filter(project => project.id !== action.payload);
+      })
+      .addCase(deleteProject.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to delete project';
+      })
+      .addCase(updateProject.pending, state => {
         state.loading = true;
         state.error = null;
       })
       .addCase(updateProject.fulfilled, (state, action) => {
         state.loading = false;
-        const { id, data } = action.payload;
-        const index = state.projects.findIndex(p => p.id === id);
-        if (index !== -1) {
-          state.projects[index] = { ...state.projects[index], ...data };
+        const updatedProjectIndex = state.projects.findIndex(
+          project => project.id === action.payload.id
+        );
+        if (updatedProjectIndex !== -1) {
+          state.projects[updatedProjectIndex] = action.payload;
         }
       })
       .addCase(updateProject.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to update project';
       });
-  }
+  },
 });
+
+export const { setProjects } = projectsSlice.actions;
 
 export default projectsSlice.reducer;

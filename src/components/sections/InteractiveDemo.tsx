@@ -88,8 +88,8 @@ export function InteractiveDemo() {
                 { label: 'CPU Usage', value: '42%' },
                 { label: 'Memory', value: '2.4GB' },
                 { label: 'Tasks', value: '145' },
-                { label: 'Uptime', value: '99.9%' }
-              ].map((metric) => (
+                { label: 'Uptime', value: '99.9%' },
+              ].map(metric => (
                 <div key={metric.label} className="bg-[#0f172a] rounded-lg p-3">
                   <div className="text-sm text-gray-400">{metric.label}</div>
                   <div className="text-lg font-semibold text-[#06b6d4]">{metric.value}</div>

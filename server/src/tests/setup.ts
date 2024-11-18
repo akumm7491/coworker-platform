@@ -14,13 +14,13 @@ jest.mock('../config/env', () => ({
     nodeEnv: 'test',
     clientUrl: 'http://localhost:3456',
     database: {
-      url: 'mongodb://mongodb:27017/coworker-platform-test'
+      url: 'mongodb://mongodb:27017/coworker-platform-test',
     },
     jwt: {
       secret: 'test-jwt-secret',
-      expiresIn: '30d'
-    }
-  }
+      expiresIn: '30d',
+    },
+  },
 }));
 
 // Global test timeout
