@@ -1,23 +1,25 @@
 FROM node:18-alpine
 
-WORKDIR /app/server
+WORKDIR /app
 
 # Install build dependencies
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ git
 
-# Install global dependencies
-RUN npm install -g ts-node-dev helmet compression express cors express-rate-limit passport winston \
-    passport-jwt passport-local passport-google-oauth20 passport-github2 bcryptjs typeorm pg
+# Copy package files first for better caching
+COPY server/package*.json ./server/
+COPY server/tsconfig.json ./server/
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+WORKDIR /app/server
 
-# Install dependencies with legacy peer deps to handle any compatibility issues
-RUN npm install --legacy-peer-deps
+# Install dependencies ensuring ts-node and related packages are available
+RUN npm install --legacy-peer-deps && \
+    npm install --save-dev typescript@5.6.3 ts-node@10.9.2 ts-node-dev@2.0.0 && \
+    npm install -g npm@latest && \
+    npm cache clean --force
 
 # Copy source code (this will be overridden by volume mount)
-COPY src/ ./src/
+COPY server/src/ ./src/
+COPY shared/ ../shared/
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
@@ -25,6 +27,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 EXPOSE 3457
 
-# Start development server
-ENV NODE_PATH=/usr/local/lib/node_modules
-CMD ["ts-node-dev", "--respawn", "--transpile-only", "src/index.ts"]
+# Start development server with ES modules support
+ENV NODE_OPTIONS="--loader ts-node/esm --no-warnings"
+ENV PATH /app/server/node_modules/.bin:$PATH
+
+CMD ["npm", "run", "dev"]

@@ -9,7 +9,7 @@ import { config } from './env.js';
 import { userRepository } from '../repositories/user.repository.js';
 import { UserProvider } from '../models/User.js';
 
-interface GoogleProfile extends Profile {
+interface GoogleProfile extends Omit<Profile, 'displayName'> {
   displayName?: string;
   photos?: { value: string }[];
   emails?: { value: string; verified: boolean }[];

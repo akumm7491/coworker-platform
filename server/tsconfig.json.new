@@ -24,6 +24,10 @@
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifiers": true
+  },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
