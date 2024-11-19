@@ -10,7 +10,7 @@ const router = Router();
 const projectRepository = AppDataSource.getRepository(Project);
 const agentRepository = AppDataSource.getRepository(Agent);
 
-const requireAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const requireAuth = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   if (!req.user) {
     throw new AppError('Authentication required', 401);
   }
@@ -76,7 +76,7 @@ const getOverview: AsyncRouteHandler = async (req: Request, res: Response): Prom
 };
 
 // GET /api/analytics/usage
-const getUsage: AsyncRouteHandler = async (req: Request, res: Response): Promise<Response> => {
+const getUsage: AsyncRouteHandler = async (_req: Request, res: Response): Promise<Response> => {
   try {
     // Implementation for usage analytics
     return res.json({

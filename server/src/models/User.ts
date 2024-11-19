@@ -8,24 +8,22 @@ import {
   BeforeInsert,
   BeforeUpdate,
   OneToMany,
-  ManyToMany,
+  ManyToMany
 } from 'typeorm';
-import { eventBus } from '../events/eventBus.js';
-import { Event, EventType } from '../events/types.js';
+import * as bcrypt from 'bcrypt';
 import { Project } from './Project.js';
 import { Agent } from './Agent.js';
-import { randomUUID } from 'crypto';
-import * as bcrypt from 'bcrypt';
+import logger from '../utils/logger.js';
 
-export interface UserActivity {
-  lastLogin: Date;
-  lastActive: Date;
-  projectActivity: Array<{
+interface UserActivity {
+  lastLogin?: Date;
+  lastActive?: Date;
+  projectActivity?: Array<{
     projectId: string;
     timestamp: Date;
     action: string;
   }>;
-  agentActivity: Array<{
+  agentActivity?: Array<{
     agentId: string;
     timestamp: Date;
     action: string;
@@ -36,6 +34,7 @@ export enum UserProvider {
   LOCAL = 'local',
   GOOGLE = 'google',
   GITHUB = 'github',
+  MICROSOFT = 'microsoft'
 }
 
 @Entity('users')
@@ -129,8 +128,10 @@ export class User {
   @BeforeInsert()
   @BeforeUpdate()
   async beforeInsert(): Promise<void> {
-    if (this.password) {
-      // Password hashing is handled by the auth service
+    if (this.password && !this.password.startsWith('$2b$')) {
+      // Only hash if password is not already hashed
+      this.password = await bcrypt.hash(this.password, 10);
+      logger.info('Password hashed in User model beforeInsert hook');
     }
   }
 
@@ -161,53 +162,29 @@ export class User {
     | 'updateLastLogin'
     | 'comparePassword'
   > {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password, emailVerificationToken, resetPasswordToken, ...userWithoutSensitiveData } =
-      this;
-    return userWithoutSensitiveData;
+    const user = { ...this };
+    delete user.password;
+    delete user.emailVerificationToken;
+    delete user.resetPasswordToken;
+    return user;
   }
 
   verifyEmail(): void {
     this.emailVerified = true;
     this.emailVerificationToken = undefined;
-
-    const event: Event<{ userId: string }> = {
-      id: randomUUID(),
-      type: EventType.USER_EMAIL_VERIFIED,
-      aggregateId: this.id,
-      aggregateType: 'User',
-      data: { userId: this.id },
-      metadata: {
-        userId: this.id,
-        timestamp: Date.now(),
-        version: 1,
-      },
-    };
-
-    eventBus.publish(event);
   }
 
   setResetPasswordToken(token: string, expires: Date): void {
-    if (!token) {
-      throw new Error('Reset token cannot be empty');
-    }
-
-    const now = new Date();
-    const maxExpirationDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
-
-    if (expires < now || expires > maxExpirationDate) {
-      throw new Error('Reset token expiration must be between now and 24 hours from now');
-    }
-
     this.resetPasswordToken = token;
     this.resetPasswordExpires = expires;
   }
 
   validateResetPasswordToken(token: string): boolean {
-    if (!this.resetPasswordToken || !this.resetPasswordExpires) {
-      return false;
-    }
-    return this.resetPasswordToken === token && this.resetPasswordExpires > new Date();
+    return (
+      this.resetPasswordToken === token &&
+      this.resetPasswordExpires &&
+      this.resetPasswordExpires > new Date()
+    );
   }
 
   clearResetPasswordToken(): void {
@@ -219,7 +196,7 @@ export class User {
     this.preferences = {
       ...this.preferences,
       ...preferences,
-    } as User['preferences'];
+    };
   }
 
   addOwnedProject(project: Project): void {
@@ -238,7 +215,9 @@ export class User {
 
   removeCollaboratedProject(projectId: string): void {
     if (this.collaboratedProjects) {
-      this.collaboratedProjects = this.collaboratedProjects.filter(p => p.id !== projectId);
+      this.collaboratedProjects = this.collaboratedProjects.filter(
+        project => project.id !== projectId
+      );
     }
   }
 
@@ -251,53 +230,43 @@ export class User {
 
   removeAgent(agentId: string): void {
     if (this.agents) {
-      this.agents = this.agents.filter(a => a.id !== agentId);
+      this.agents = this.agents.filter(agent => agent.id !== agentId);
     }
   }
 
   trackProjectActivity(projectId: string, action: string): void {
     if (!this.activity) {
-      this.activity = {
-        lastLogin: new Date(),
-        lastActive: new Date(),
-        projectActivity: [],
-        agentActivity: [],
-      };
+      this.activity = {};
+    }
+    if (!this.activity.projectActivity) {
+      this.activity.projectActivity = [];
     }
     this.activity.projectActivity.push({
       projectId,
       timestamp: new Date(),
       action,
     });
-    this.activity.lastActive = new Date();
   }
 
   trackAgentActivity(agentId: string, action: string): void {
     if (!this.activity) {
-      this.activity = {
-        lastLogin: new Date(),
-        lastActive: new Date(),
-        projectActivity: [],
-        agentActivity: [],
-      };
+      this.activity = {};
+    }
+    if (!this.activity.agentActivity) {
+      this.activity.agentActivity = [];
     }
     this.activity.agentActivity.push({
       agentId,
       timestamp: new Date(),
       action,
     });
-    this.activity.lastActive = new Date();
   }
 
   updateLastLogin(): void {
-    const activity = this.activity || {
-      lastLogin: new Date(),
-      lastActive: new Date(),
-      projectActivity: [],
-      agentActivity: [],
-    };
-    activity.lastLogin = new Date();
-    activity.lastActive = new Date();
-    this.activity = activity;
+    if (!this.activity) {
+      this.activity = {};
+    }
+    this.activity.lastLogin = new Date();
+    this.activity.lastActive = new Date();
   }
 }

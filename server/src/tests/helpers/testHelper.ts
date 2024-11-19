@@ -1,9 +1,18 @@
 import { Application } from 'express';
 import request from 'supertest';
-import { Project, ProjectTask, Agent } from '../../types/shared';
-import { DatabaseProject, DatabaseTask, DatabaseAgent } from '../../types/database';
+import { AppDataSource } from '../../config/database.js';
+import { User } from '../../models/User.js';
+import { Project } from '../../models/Project.js';
+import { Agent } from '../../models/Agent.js';
 
-export const testProject: Partial<Project> = {
+export const testUser = {
+  email: 'test@example.com',
+  password: 'testpassword123',
+  name: 'Test User',
+  provider: 'local' as const,
+};
+
+export const testProject = {
   name: 'Test Project',
   description: 'A test project',
   status: 'in_progress',
@@ -11,17 +20,7 @@ export const testProject: Partial<Project> = {
   agents_assigned: [],
 };
 
-export const testTask: Partial<ProjectTask> = {
-  title: 'Test Task',
-  description: 'A test task',
-  status: 'pending',
-  priority: 'medium',
-  assignedTo: '',
-  dependencies: [],
-  progress: 0,
-};
-
-export const testAgent: Partial<Agent> = {
+export const testAgent = {
   name: 'Test Agent',
   type: 'developer',
   status: 'idle',
@@ -36,26 +35,64 @@ export const testAgent: Partial<Agent> = {
   description: 'A test agent',
 };
 
-export async function createTestProject(app: Application): Promise<DatabaseProject> {
-  const response = await request(app).post('/api/projects').send(testProject);
+export async function createTestUser(app: Application): Promise<any> {
+  const response = await request(app)
+    .post('/api/auth/register')
+    .send(testUser);
   return response.body;
 }
 
-export async function createTestTask(app: Application, projectId: string): Promise<DatabaseTask> {
-  const response = await request(app).post(`/api/projects/${projectId}/tasks`).send(testTask);
+export async function loginTestUser(app: Application): Promise<string> {
+  const response = await request(app)
+    .post('/api/auth/login')
+    .send({
+      email: testUser.email,
+      password: testUser.password,
+    });
+  return response.body.token;
+}
+
+export async function createTestProject(app: Application, token: string): Promise<any> {
+  const response = await request(app)
+    .post('/api/projects')
+    .set('Authorization', `Bearer ${token}`)
+    .send(testProject);
   return response.body;
 }
 
-export async function createTestAgent(app: Application): Promise<DatabaseAgent> {
-  const response = await request(app).post('/api/agents').send(testAgent);
+export async function createTestAgent(app: Application, token: string): Promise<any> {
+  const response = await request(app)
+    .post('/api/agents')
+    .set('Authorization', `Bearer ${token}`)
+    .send(testAgent);
   return response.body;
 }
 
-export async function cleanupDatabase(app: Application): Promise<void> {
-  await request(app).delete('/api/test/cleanup');
+export async function cleanupDatabase(): Promise<void> {
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
+    await AppDataSource.getRepository(User).clear();
+    await AppDataSource.getRepository(Project).clear();
+    await AppDataSource.getRepository(Agent).clear();
+  } catch (error) {
+    console.error('Error cleaning up database:', error);
+    throw error;
+  }
 }
 
-export function expectProject(project: DatabaseProject): void {
+export function expectUser(user: any): void {
+  expect(user).toHaveProperty('id');
+  expect(user).toHaveProperty('email', testUser.email);
+  expect(user).toHaveProperty('name', testUser.name);
+  expect(user).not.toHaveProperty('password');
+  expect(user).toHaveProperty('provider', testUser.provider);
+  expect(user).toHaveProperty('created_at');
+  expect(user).toHaveProperty('updated_at');
+}
+
+export function expectProject(project: any): void {
   expect(project).toHaveProperty('id');
   expect(project).toHaveProperty('name', testProject.name);
   expect(project).toHaveProperty('description', testProject.description);
@@ -66,19 +103,7 @@ export function expectProject(project: DatabaseProject): void {
   expect(project).toHaveProperty('updated_at');
 }
 
-export function expectTask(task: DatabaseTask): void {
-  expect(task).toHaveProperty('id');
-  expect(task).toHaveProperty('title', testTask.title);
-  expect(task).toHaveProperty('description', testTask.description);
-  expect(task).toHaveProperty('status', testTask.status);
-  expect(task).toHaveProperty('priority', testTask.priority);
-  expect(task).toHaveProperty('assignedTo', testTask.assignedTo);
-  expect(task).toHaveProperty('dependencies');
-  expect(task).toHaveProperty('created_at');
-  expect(task).toHaveProperty('updated_at');
-}
-
-export function expectAgent(agent: DatabaseAgent): void {
+export function expectAgent(agent: any): void {
   expect(agent).toHaveProperty('id');
   expect(agent).toHaveProperty('name', testAgent.name);
   expect(agent).toHaveProperty('type', testAgent.type);

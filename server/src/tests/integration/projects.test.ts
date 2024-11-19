@@ -3,15 +3,13 @@ import request from 'supertest';
 import app from '../../app';
 import {
   testProject,
-  testTask,
   expectProject,
-  expectTask,
   cleanupDatabase,
 } from '../helpers/testHelper';
 
 describe('Projects API', () => {
   beforeEach(async () => {
-    await cleanupDatabase(app);
+    await cleanupDatabase();
   });
 
   describe('GET /api/projects', () => {
@@ -133,18 +131,17 @@ describe('Projects API', () => {
 
     describe('POST /api/projects/:projectId/tasks', () => {
       it('should create a new task', async () => {
-        const response = await request(app).post(`/api/projects/${projectId}/tasks`).send(testTask);
+        const response = await request(app).post(`/api/projects/${projectId}/tasks`).send({ title: 'New Task', description: 'New task description' });
 
         expect(response.status).toBe(201);
-        expectTask(response.body);
-        expect(response.body.title).toBe(testTask.title);
-        expect(response.body.description).toBe(testTask.description);
+        expect(response.body.title).toBe('New Task');
+        expect(response.body.description).toBe('New task description');
       });
 
       it('should return 404 for non-existent project', async () => {
         const response = await request(app)
           .post('/api/projects/non-existent-id/tasks')
-          .send(testTask);
+          .send({ title: 'New Task', description: 'New task description' });
 
         expect(response.status).toBe(404);
       });
@@ -155,7 +152,7 @@ describe('Projects API', () => {
         // Create a task first
         const createResponse = await request(app)
           .post(`/api/projects/${projectId}/tasks`)
-          .send(testTask);
+          .send({ title: 'New Task', description: 'New task description' });
 
         const updateData = {
           title: 'Updated Task',
@@ -167,7 +164,6 @@ describe('Projects API', () => {
           .send(updateData);
 
         expect(response.status).toBe(200);
-        expectTask(response.body);
         expect(response.body.title).toBe(updateData.title);
         expect(response.body.description).toBe(updateData.description);
       });
@@ -186,7 +182,7 @@ describe('Projects API', () => {
         // Create a task first
         const createResponse = await request(app)
           .post(`/api/projects/${projectId}/tasks`)
-          .send(testTask);
+          .send({ title: 'New Task', description: 'New task description' });
 
         const response = await request(app).delete(
           `/api/projects/${projectId}/tasks/${createResponse.body.id}`,

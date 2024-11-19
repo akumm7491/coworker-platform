@@ -67,7 +67,7 @@ export const securityHeaders = helmet({
 });
 
 // Request logging middleware
-export const requestLogger = (req: Request, res: Response, next: NextFunction): void => {
+export const requestLogger = (req: Request, _res: Response, next: NextFunction): void => {
   logger.info('Incoming request', {
     method: req.method,
     path: req.path,

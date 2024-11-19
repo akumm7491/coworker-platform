@@ -1,15 +1,19 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';  // Using bcrypt consistently
 import { AppDataSource } from '../config/database.js';
 import { User, UserProvider } from '../models/User.js';
 import { AppError } from '../middleware/error.js';
 import { catchAsync } from '../utils/catchAsync.js';
 import { createToken } from '../middleware/auth.js';
+import logger from '../utils/logger.js';
 
 const userRepository = AppDataSource.getRepository(User);
 
 export const register = catchAsync(async (req: Request, res: Response) => {
   const { email, password, confirmPassword, name } = req.body;
+
+  // Log input
+  logger.info('Register attempt:', { email, name });
 
   // Validate input
   if (!email || !password || !name) {
@@ -23,11 +27,18 @@ export const register = catchAsync(async (req: Request, res: Response) => {
   // Check if user already exists
   const existingUser = await userRepository.findOne({ where: { email } });
   if (existingUser) {
+    // Log existing user's password hash for debugging
+    logger.info('Existing user found:', { 
+      email, 
+      passwordHash: existingUser.password,
+      userId: existingUser.id 
+    });
     throw new AppError('User already exists', 400);
   }
 
   // Hash password
   const hashedPassword = await bcrypt.hash(password, 10);
+  logger.info('Password hashed:', { email, passwordHash: hashedPassword });
 
   // Create new user
   const user = userRepository.create({
@@ -38,6 +49,7 @@ export const register = catchAsync(async (req: Request, res: Response) => {
   });
 
   await userRepository.save(user);
+  logger.info('User created:', { email, userId: user.id });
 
   // Create tokens
   const { accessToken, refreshToken } = createToken(user.id);
@@ -56,28 +68,11 @@ export const register = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-export const login = catchAsync(async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-
-  // Validate input
-  if (!email || !password) {
-    throw new AppError('Missing required fields', 400);
-  }
-
-  // Find user
-  const user = await userRepository.findOne({ where: { email } });
+export const getCurrentUser = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
   if (!user) {
-    throw new AppError('Invalid credentials', 401);
+    throw new AppError('Not authenticated', 401);
   }
-
-  // Check password
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    throw new AppError('Invalid credentials', 401);
-  }
-
-  // Create tokens
-  const { accessToken, refreshToken } = createToken(user.id);
 
   res.json({
     success: true,
@@ -86,14 +81,5 @@ export const login = catchAsync(async (req: Request, res: Response) => {
       email: user.email,
       name: user.name,
     },
-    tokens: {
-      accessToken,
-      refreshToken,
-    },
   });
-});
-
-export const getCurrentUser = catchAsync(async (req: Request, res: Response) => {
-  // Since the protect middleware adds the user to req, we can just return it
-  res.status(200).json(req.user);
 });

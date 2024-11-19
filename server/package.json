@@ -58,6 +58,7 @@
     "@types/express-validator": "^3.0.2",
     "@types/kafkajs": "^1.9.0",
     "@types/passport-google-oauth20": "^2.0.16",
-    "@types/passport-local": "^1.0.38"
+    "@types/passport-local": "^1.0.38",
+    "ts-node": "^10.9.2"
   }
 }

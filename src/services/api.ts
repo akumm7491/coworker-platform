@@ -5,6 +5,7 @@ import { AuthResponse, LoginData, RegisterData, AuthUser } from '@/types/auth';
 import { Project } from '@/types/project';
 import { ProjectTask } from '@/types/task';
 import { Agent } from '@/types/agent';
+import { getTokens, saveTokens, saveUser, clearAuth } from '@/utils/tokenStorage';
 
 // Configure axios
 const api = axios.create({
@@ -14,31 +15,13 @@ const api = axios.create({
   },
 });
 
-// // Queue for token refresh
-// const isRefreshing = false;
-// let failedQueue: Array<{
-//   resolve: (token: string) => void;
-//   reject: (error: any) => void;
-// }> = [];
-
-// const processQueue = (error: Error | null, token: string | null = null) => {
-//   failedQueue.forEach(promise => {
-//     if (error) {
-//       promise.reject(error);
-//     } else if (token) {
-//       promise.resolve(token);
-//     }
-//   });
-//   failedQueue = [];
-// };
-
 // Add request interceptor for authentication
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const accessToken = localStorage.getItem('accessToken');
-    if (accessToken) {
+    const tokens = getTokens();
+    if (tokens?.accessToken) {
       config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${accessToken}`;
+      config.headers.Authorization = `Bearer ${tokens.accessToken}`;
     }
     return config;
   },
@@ -51,18 +34,16 @@ api.interceptors.request.use(
 api.login = async (data: LoginData): Promise<AuthResponse> => {
   const response = await api.post<AuthResponse>('/api/auth/login', data);
   const { tokens, user } = response.data;
-  localStorage.setItem('accessToken', tokens.accessToken);
-  localStorage.setItem('refreshToken', tokens.refreshToken);
-  localStorage.setItem('userData', JSON.stringify(user));
+  saveTokens(tokens);
+  saveUser(user);
   return response.data;
 };
 
 api.register = async (data: RegisterData): Promise<AuthResponse> => {
   const response = await api.post<AuthResponse>('/api/auth/register', data);
   const { tokens, user } = response.data;
-  localStorage.setItem('accessToken', tokens.accessToken);
-  localStorage.setItem('refreshToken', tokens.refreshToken);
-  localStorage.setItem('userData', JSON.stringify(user));
+  saveTokens(tokens);
+  saveUser(user);
   return response.data;
 };
 
@@ -70,8 +51,7 @@ api.logout = async (): Promise<void> => {
   try {
     await api.post('/api/auth/logout');
   } finally {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    clearAuth();
   }
 };
 

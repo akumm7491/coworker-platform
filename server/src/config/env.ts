@@ -57,7 +57,7 @@ export const config: Config = {
     url: process.env.CLIENT_URL || 'http://localhost:3456',
   },
   cors: {
-    origins: (process.env.CORS_ORIGINS || '').split(',').filter(Boolean),
+    origins: (process.env.CORS_ORIGINS || 'http://localhost:3456').split(',').filter(Boolean),
   },
   database: {
     url: process.env.POSTGRES_URL || 'postgres://postgres:postgres@postgres:5432/coworker',

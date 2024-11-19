@@ -3,13 +3,13 @@ import request from 'supertest';
 import app from '../../app.js';
 import {
   cleanupDatabase,
-  testAgent,
-  expectAgent,
+  testProject,
+  expectProject,
   createTestUser,
   loginTestUser,
 } from '../helpers/testHelper.js';
 
-describe('Agents API', () => {
+describe('Projects API', () => {
   let authToken: string;
 
   beforeEach(async () => {
@@ -18,28 +18,28 @@ describe('Agents API', () => {
     authToken = await loginTestUser(app);
   });
 
-  describe('POST /api/agents', () => {
-    it('should create a new agent', async () => {
+  describe('POST /api/projects', () => {
+    it('should create a new project', async () => {
       const response = await request(app)
-        .post('/api/agents')
+        .post('/api/projects')
         .set('Authorization', `Bearer ${authToken}`)
-        .send(testAgent);
+        .send(testProject);
 
       expect(response.status).toBe(201);
-      expectAgent(response.body);
+      expectProject(response.body);
     });
 
     it('should return 401 without auth token', async () => {
       const response = await request(app)
-        .post('/api/agents')
-        .send(testAgent);
+        .post('/api/projects')
+        .send(testProject);
 
       expect(response.status).toBe(401);
     });
 
-    it('should return 400 for invalid agent data', async () => {
+    it('should return 400 for invalid project data', async () => {
       const response = await request(app)
-        .post('/api/agents')
+        .post('/api/projects')
         .set('Authorization', `Bearer ${authToken}`)
         .send({});
 
@@ -47,58 +47,58 @@ describe('Agents API', () => {
     });
   });
 
-  describe('GET /api/agents', () => {
+  describe('GET /api/projects', () => {
     beforeEach(async () => {
-      // Create a test agent
+      // Create a test project
       await request(app)
-        .post('/api/agents')
+        .post('/api/projects')
         .set('Authorization', `Bearer ${authToken}`)
-        .send(testAgent);
+        .send(testProject);
     });
 
-    it('should return all agents', async () => {
+    it('should return all projects', async () => {
       const response = await request(app)
-        .get('/api/agents')
+        .get('/api/projects')
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBeGreaterThan(0);
-      expectAgent(response.body[0]);
+      expectProject(response.body[0]);
     });
 
     it('should return 401 without auth token', async () => {
       const response = await request(app)
-        .get('/api/agents');
+        .get('/api/projects');
 
       expect(response.status).toBe(401);
     });
   });
 
-  describe('GET /api/agents/:id', () => {
-    let agentId: string;
+  describe('GET /api/projects/:id', () => {
+    let projectId: string;
 
     beforeEach(async () => {
-      // Create a test agent
+      // Create a test project
       const response = await request(app)
-        .post('/api/agents')
+        .post('/api/projects')
         .set('Authorization', `Bearer ${authToken}`)
-        .send(testAgent);
-      agentId = response.body.id;
+        .send(testProject);
+      projectId = response.body.id;
     });
 
-    it('should return a specific agent', async () => {
+    it('should return a specific project', async () => {
       const response = await request(app)
-        .get(`/api/agents/${agentId}`)
+        .get(`/api/projects/${projectId}`)
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
-      expectAgent(response.body);
+      expectProject(response.body);
     });
 
-    it('should return 404 for non-existent agent', async () => {
+    it('should return 404 for non-existent project', async () => {
       const response = await request(app)
-        .get('/api/agents/nonexistent-id')
+        .get('/api/projects/nonexistent-id')
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(404);
@@ -106,87 +106,87 @@ describe('Agents API', () => {
 
     it('should return 401 without auth token', async () => {
       const response = await request(app)
-        .get(`/api/agents/${agentId}`);
+        .get(`/api/projects/${projectId}`);
 
       expect(response.status).toBe(401);
     });
   });
 
-  describe('PUT /api/agents/:id', () => {
-    let agentId: string;
+  describe('PUT /api/projects/:id', () => {
+    let projectId: string;
 
     beforeEach(async () => {
-      // Create a test agent
+      // Create a test project
       const response = await request(app)
-        .post('/api/agents')
+        .post('/api/projects')
         .set('Authorization', `Bearer ${authToken}`)
-        .send(testAgent);
-      agentId = response.body.id;
+        .send(testProject);
+      projectId = response.body.id;
     });
 
-    it('should update an agent', async () => {
+    it('should update a project', async () => {
       const updatedData = {
-        ...testAgent,
-        name: 'Updated Agent Name',
+        ...testProject,
+        name: 'Updated Project Name',
       };
 
       const response = await request(app)
-        .put(`/api/agents/${agentId}`)
+        .put(`/api/projects/${projectId}`)
         .set('Authorization', `Bearer ${authToken}`)
         .send(updatedData);
 
       expect(response.status).toBe(200);
       expect(response.body.name).toBe(updatedData.name);
-      expectAgent(response.body);
+      expectProject(response.body);
     });
 
-    it('should return 404 for non-existent agent', async () => {
+    it('should return 404 for non-existent project', async () => {
       const response = await request(app)
-        .put('/api/agents/nonexistent-id')
+        .put('/api/projects/nonexistent-id')
         .set('Authorization', `Bearer ${authToken}`)
-        .send(testAgent);
+        .send(testProject);
 
       expect(response.status).toBe(404);
     });
 
     it('should return 401 without auth token', async () => {
       const response = await request(app)
-        .put(`/api/agents/${agentId}`)
-        .send(testAgent);
+        .put(`/api/projects/${projectId}`)
+        .send(testProject);
 
       expect(response.status).toBe(401);
     });
   });
 
-  describe('DELETE /api/agents/:id', () => {
-    let agentId: string;
+  describe('DELETE /api/projects/:id', () => {
+    let projectId: string;
 
     beforeEach(async () => {
-      // Create a test agent
+      // Create a test project
       const response = await request(app)
-        .post('/api/agents')
+        .post('/api/projects')
         .set('Authorization', `Bearer ${authToken}`)
-        .send(testAgent);
-      agentId = response.body.id;
+        .send(testProject);
+      projectId = response.body.id;
     });
 
-    it('should delete an agent', async () => {
+    it('should delete a project', async () => {
       const response = await request(app)
-        .delete(`/api/agents/${agentId}`)
+        .delete(`/api/projects/${projectId}`)
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(204);
 
-      // Verify agent is deleted
+      // Verify project is deleted
       const getResponse = await request(app)
-        .get(`/api/agents/${agentId}`)
+        .get(`/api/projects/${projectId}`)
         .set('Authorization', `Bearer ${authToken}`);
       expect(getResponse.status).toBe(404);
     });
 
-    it('should return 404 for non-existent agent', async () => {
+    it('should return 404 for non-existent project', async () => {
       const response = await request(app)
-        .delete('/api/agents/nonexistent-id')
+        .delete('/api/projects/nonexistent-id')
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(404);
@@ -194,7 +194,7 @@ describe('Agents API', () => {
 
     it('should return 401 without auth token', async () => {
       const response = await request(app)
-        .delete(`/api/agents/${agentId}`);
+        .delete(`/api/projects/${projectId}`);
 
       expect(response.status).toBe(401);
     });

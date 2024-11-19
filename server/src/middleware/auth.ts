@@ -14,11 +14,12 @@ interface TokenPayload {
 // Create JWT token
 export const createToken = (userId: string): { accessToken: string; refreshToken: string } => {
   try {
-    const accessToken = jwt.sign({ id: userId }, config.jwt.secret, {
+    const payload = { id: userId };
+    const accessToken = jwt.sign(payload, config.jwt.secret, {
       expiresIn: '1h', // Short-lived access token
     });
 
-    const refreshToken = jwt.sign({ id: userId }, config.jwt.secret, {
+    const refreshToken = jwt.sign(payload, config.jwt.secret, {
       expiresIn: '7d', // Longer-lived refresh token
     });
 
@@ -100,16 +101,15 @@ export const refreshToken = async (
 
     res.json({
       success: true,
-      ...tokens,
+      tokens,
     });
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
-      return next(new AppError('Refresh token expired', 401));
+      next(new AppError('Refresh token expired', 401));
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      next(new AppError('Invalid refresh token', 401));
+    } else {
+      next(error);
     }
-    if (error instanceof jwt.JsonWebTokenError) {
-      return next(new AppError('Invalid refresh token', 401));
-    }
-    logger.error('Error refreshing token:', error);
-    next(new AppError('Error refreshing token', 500));
   }
 };
