@@ -13,12 +13,14 @@ declare module 'axios' {
 
     // Projects
     getProjects(): Promise<Project[]>;
+    getProject(projectId: string): Promise<Project>;
     createProject(data: Partial<Project>): Promise<Project>;
     deleteProject(projectId: string): Promise<void>;
     updateProject(data: Partial<Project>): Promise<Project>;
 
     // Tasks
     getTasks(projectId: string): Promise<ProjectTask[]>;
+    getTask(taskId: string): Promise<ProjectTask>;
     createTask(projectId: string, data: Partial<ProjectTask>): Promise<ProjectTask>;
     updateTask(projectId: string, taskId: string, data: Partial<ProjectTask>): Promise<ProjectTask>;
     deleteTask(projectId: string, taskId: string): Promise<void>;

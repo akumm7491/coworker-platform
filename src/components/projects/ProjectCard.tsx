@@ -80,12 +80,12 @@ function ProjectCard({ project, onViewDetails }: ProjectCardProps) {
         <div className="flex items-center space-x-4">
           <div className="flex items-center text-sm text-gray-500">
             <UserGroupIcon className="h-4 w-4 mr-1" />
-            {project.agents.length} members
+            {project.agents?.length ?? 0} members
           </div>
           <div className="flex items-center text-sm text-gray-500">
             <CheckCircleIcon className="h-4 w-4 mr-1" />
-            {project.tasks.filter(task => task.status === 'completed').length}/
-            {project.tasks.length} tasks
+            {project.tasks?.filter(task => task.status === 'completed').length ?? 0}/
+            {project.tasks?.length ?? 0} tasks
           </div>
         </div>
       </div>

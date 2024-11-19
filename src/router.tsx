@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
+import ProjectDetails from './pages/ProjectDetails';
 import Agents from './pages/Agents';
 import Analytics from './pages/Analytics';
 import OAuthCallback from './pages/auth/OAuthCallback';
@@ -50,6 +51,16 @@ export const router = createBrowserRouter([
       <ProtectedRoute>
         <Layout>
           <Projects />
+        </Layout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/projects/:projectId',
+    element: (
+      <ProtectedRoute>
+        <Layout>
+          <ProjectDetails />
         </Layout>
       </ProtectedRoute>
     ),

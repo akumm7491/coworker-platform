@@ -67,6 +67,11 @@ api.getProjects = async (): Promise<Project[]> => {
   return response.data;
 };
 
+api.getProject = async (projectId: string): Promise<Project> => {
+  const response = await api.get<Project>(`/api/projects/${projectId}`);
+  return response.data;
+};
+
 api.createProject = async (data: Partial<Project>): Promise<Project> => {
   const response = await api.post<Project>('/api/projects', data);
   return response.data;
