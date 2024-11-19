@@ -1,9 +1,8 @@
 import { Repository } from 'typeorm';
 import { Project, ProjectStatus } from '../../models/Project.js';
 import { ProjectRepository } from '../../config/database.js';
-import { createLogger } from '../../utils/logger.js';
+import logger from '../../utils/logger.js';
 
-const logger = createLogger('ProjectService');
 
 export interface CreateProjectInput {
   name: string;

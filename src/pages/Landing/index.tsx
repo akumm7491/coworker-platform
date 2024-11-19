@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { SparklesIcon, BoltIcon, BeakerIcon } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';

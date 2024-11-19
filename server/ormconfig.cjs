@@ -6,9 +6,9 @@ const dataSource = new DataSource({
   url: process.env.POSTGRES_URL || 'postgres://postgres:postgres@localhost:5433/coworker',
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
-  entities: ['src/models/**/*.js'],
-  migrations: ['src/migrations/**/*.js'],
-  subscribers: ['src/subscribers/**/*.js'],
+  entities: ['src/models/**/*.ts'],
+  migrations: ['src/migrations/**/*.ts'],
+  subscribers: ['src/subscribers/**/*.ts'],
   cli: {
     entitiesDir: 'src/models',
     migrationsDir: 'src/migrations',

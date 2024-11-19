@@ -51,62 +51,9 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor for token refresh
-api.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as CustomAxiosRequestConfig;
-
-    if (error.response?.status === 401 && !originalRequest?._retry) {
-      if (isRefreshing) {
-        try {
-          const token = await new Promise<string>((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          });
-          if (originalRequest) {
-            originalRequest.headers = originalRequest.headers || {};
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return axios(originalRequest);
-          }
-        } catch (err) {
-          return Promise.reject(err);
-        }
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        const response = await axios.post<AuthResponse>(`${api.defaults.baseURL}/auth/refresh`, {
-          refreshToken,
-        });
-
-        const { accessToken } = response.data;
-        localStorage.setItem('accessToken', accessToken);
-
-        if (originalRequest) {
-          originalRequest.headers = originalRequest.headers || {};
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        }
-
-        processQueue(null, accessToken);
-        return axios(originalRequest);
-      } catch (err) {
-        processQueue(err instanceof Error ? err : new Error('Token refresh failed'));
-        return Promise.reject(err);
-      } finally {
-        isRefreshing = false;
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);
-
 // Authentication
 export async function login(data: LoginData): Promise<AuthResponse> {
-  const response = await api.post<AuthResponse>('/auth/login', data);
+  const response = await api.post<AuthResponse>('/api/auth/login', data);
   const { accessToken, refreshToken } = response.data;
   localStorage.setItem('accessToken', accessToken);
   localStorage.setItem('refreshToken', refreshToken);
@@ -114,7 +61,7 @@ export async function login(data: LoginData): Promise<AuthResponse> {
 }
 
 export async function register(data: RegisterData): Promise<AuthResponse> {
-  const response = await api.post<AuthResponse>('/auth/register', data);
+  const response = await api.post<AuthResponse>('/api/auth/register', data);
   const { accessToken, refreshToken } = response.data;
   localStorage.setItem('accessToken', accessToken);
   localStorage.setItem('refreshToken', refreshToken);
@@ -123,7 +70,7 @@ export async function register(data: RegisterData): Promise<AuthResponse> {
 
 export async function logout(): Promise<void> {
   try {
-    await api.post('/auth/logout');
+    await api.post('/api/auth/logout');
   } finally {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
@@ -132,32 +79,32 @@ export async function logout(): Promise<void> {
 
 // Current User
 export async function getCurrentUser(): Promise<AuthUser> {
-  const response = await api.get<AuthUser>('/auth/me');
+  const response = await api.get<AuthUser>('/api/auth/me');
   return response.data;
 }
 
 // Projects
 export async function getProjects(): Promise<Project[]> {
-  const response = await api.get<Project[]>('/projects');
+  const response = await api.get<Project[]>('/api/projects');
   return response.data;
 }
 
 export async function createProject(data: Partial<Project>): Promise<Project> {
-  const response = await api.post<Project>('/projects', data);
+  const response = await api.post<Project>('/api/projects', data);
   return response.data;
 }
 
 export async function updateProject(data: Partial<Project>): Promise<Project> {
-  return api.put(`/projects/${data.id}`, data).then(response => response.data);
+  return api.put(`/api/projects/${data.id}`, data).then(response => response.data);
 }
 
 export async function deleteProject(projectId: string): Promise<void> {
-  await api.delete(`/projects/${projectId}`);
+  return api.delete(`/api/projects/${projectId}`);
 }
 
 // Tasks
 export async function getTasks(projectId: string): Promise<ProjectTask[]> {
-  const response = await api.get<ProjectTask[]>(`/projects/${projectId}/tasks`);
+  const response = await api.get<ProjectTask[]>(`/api/projects/${projectId}/tasks`);
   return response.data;
 }
 
@@ -165,7 +112,10 @@ export async function createTask(
   projectId: string,
   data: Partial<ProjectTask>
 ): Promise<ProjectTask> {
-  const response = await api.post<ProjectTask>(`/projects/${projectId}/tasks`, data);
+  const response = await api.post<ProjectTask>(
+    `/api/projects/${projectId}/tasks`,
+    data
+  );
   return response.data;
 }
 
@@ -174,27 +124,30 @@ export async function updateTask(
   taskId: string,
   data: Partial<ProjectTask>
 ): Promise<ProjectTask> {
-  const response = await api.patch<ProjectTask>(`/projects/${projectId}/tasks/${taskId}`, data);
+  const response = await api.put<ProjectTask>(
+    `/api/projects/${projectId}/tasks/${taskId}`,
+    data
+  );
   return response.data;
 }
 
 export async function deleteTask(projectId: string, taskId: string): Promise<void> {
-  await api.delete(`/projects/${projectId}/tasks/${taskId}`);
+  return api.delete(`/api/projects/${projectId}/tasks/${taskId}`);
 }
 
 // Agents
 export async function getAgents(): Promise<Agent[]> {
-  const response = await api.get<Agent[]>('/agents');
+  const response = await api.get<Agent[]>('/api/agents');
   return response.data;
 }
 
 export async function createAgent(data: Partial<Agent>): Promise<Agent> {
-  const response = await api.post<Agent>('/agents', data);
+  const response = await api.post<Agent>('/api/agents', data);
   return response.data;
 }
 
 export async function deleteAgent(agentId: string): Promise<void> {
-  await api.delete(`/agents/${agentId}`);
+  return api.delete(`/api/agents/${agentId}`);
 }
 
 export default api;

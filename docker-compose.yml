@@ -25,7 +25,7 @@ services:
       - "3457:3457"
     environment:
       - NODE_ENV=development
-      - PORT=3457
+      - BACKEND_PORT=3457
       - MONGODB_URI=mongodb://mongodb:27017/coworker-platform
       - POSTGRES_URL=postgres://postgres:postgres@postgres:5432/coworker
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
@@ -36,6 +36,7 @@ services:
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - BASE_URL=http://localhost:3457
       - FRONTEND_URL=http://localhost:3456
+      - CLIENT_URL=http://localhost:3456
       - CORS_ORIGINS=http://localhost:3456
     volumes:
       - ./server/src:/app/server/src
@@ -58,35 +59,30 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    environment:
-      - MONGO_INITDB_DATABASE=coworker-platform
-    restart: unless-stopped
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   postgres:
-    image: postgres:15-alpine
+    image: postgres:latest
     ports:
-      - "5433:5432"  # Changed from 5432:5432 to avoid port conflict
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d
-    networks:
-      - app-network
+      - "5432:5432"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=coworker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
       start_period: 10s
-    restart: unless-stopped
 
 networks:
   app-network:
@@ -94,6 +90,4 @@ networks:
 
 volumes:
   mongodb_data:
-    driver: local
   postgres_data:
-    driver: local

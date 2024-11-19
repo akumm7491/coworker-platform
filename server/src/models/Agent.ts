@@ -37,7 +37,7 @@ export class Agent {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   name!: string;
 
   @Column({ type: 'text', nullable: true })
@@ -64,7 +64,7 @@ export class Agent {
   })
   scope!: AgentScope;
 
-  @Column()
+  @Column({ type: 'uuid' })
   ownerId!: string;
 
   @ManyToOne(() => User, user => user.agents)

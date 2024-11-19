@@ -1,8 +1,7 @@
 import { EventEmitter } from 'events';
 import { Event, EventType } from './types.js';
-import { createLogger } from '../utils/logger.js';
+import logger from '../utils/logger.js';
 
-const logger = createLogger('event-bus');
 
 class EventBus {
   private static instance: EventBus;

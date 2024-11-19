@@ -1,61 +1,41 @@
 import winston from 'winston';
-import { config } from '../config/env.js';
+import { baseLogger } from './baseLogger.js';
 
 const { combine, timestamp, printf, colorize } = winston.format;
 
-interface LoggerOptions {
-  level: string;
-  format: winston.Logform.Format;
-  transports: winston.transport[];
-}
+// Re-export the baseLogger as the default logger
+export default baseLogger;
 
-const logFormat = printf(({ level, message, timestamp, ...metadata }) => {
-  let msg = `${timestamp} [${level}]: ${message}`;
-  if (Object.keys(metadata).length > 0) {
-    msg += ` ${JSON.stringify(metadata)}`;
+// This function can be called after config is available to reconfigure the logger
+export function configureLogger(nodeEnv: string): void {
+  if (baseLogger.transports) {
+    // Remove existing transports
+    baseLogger.transports.forEach(t => baseLogger.remove(t));
   }
-  return msg;
-});
 
-const defaultOptions: LoggerOptions = {
-  level: config.nodeEnv === 'production' ? 'info' : 'debug',
-  format: combine(
-    timestamp(),
-    config.nodeEnv === 'development' ? colorize() : winston.format.uncolorize(),
-    logFormat,
-  ),
-  transports: [
-    new winston.transports.Console(),
+  // Add new transports with configuration
+  baseLogger.add(
+    new winston.transports.Console({
+      level: nodeEnv === 'production' ? 'info' : 'debug',
+      format: combine(
+        timestamp(),
+        nodeEnv === 'development' ? colorize() : winston.format.uncolorize(),
+        printf(({ level, message, timestamp, ...metadata }) => {
+          let msg = `${timestamp} [${level}]: ${message}`;
+          if (Object.keys(metadata).length > 0) {
+            msg += ` ${JSON.stringify(metadata)}`;
+          }
+          return msg;
+        }),
+      ),
+    }),
+  );
+
+  // Add file transport for errors
+  baseLogger.add(
     new winston.transports.File({
       filename: 'logs/error.log',
       level: 'error',
     }),
-    new winston.transports.File({
-      filename: 'logs/combined.log',
-    }),
-  ],
-};
-
-export function createLogger(name: string): winston.Logger {
-  return winston.createLogger({
-    ...defaultOptions,
-    defaultMeta: { service: name },
-  });
+  );
 }
-
-// Create default logger instance
-const logger = createLogger('app');
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (error: Error) => {
-  logger.error('Uncaught Exception:', error);
-  process.exit(1);
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
-  logger.error('Unhandled Rejection:', { reason, promise });
-  process.exit(1);
-});
-
-export default logger;

@@ -1,8 +1,7 @@
 import { Server as SocketServer } from 'socket.io';
 import { Server } from 'http';
-import { createLogger } from './utils/logger.js';
+import logger from './utils/logger.js';
 
-const logger = createLogger('socket');
 
 export function initializeSocketServer(server: Server): SocketServer {
   const io = new SocketServer(server, {

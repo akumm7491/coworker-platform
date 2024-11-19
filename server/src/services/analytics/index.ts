@@ -1,7 +1,6 @@
 import { Kafka, Producer, Consumer, EachMessagePayload } from 'kafkajs';
-import { createLogger } from '../../utils/logger.js';
+import logger from '../../utils/logger.js';
 
-const logger = createLogger('analytics-service');
 
 interface AnalyticsEvent {
   type: string;

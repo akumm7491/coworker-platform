@@ -1,16 +1,11 @@
+import 'reflect-metadata';
 import { createServer } from 'http';
 import app from './app.js';
 import { config } from './config/env.js';
-import { createLogger } from './utils/logger.js';
+import logger from './utils/logger.js';
+import { initializeDatabase } from './config/database.js';
 
-const logger = createLogger('server');
 const server = createServer(app);
-
-const port = config.port || 3000;
-
-server.listen(port, () => {
-  logger.info(`Server is running on port ${port}`);
-});
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error: Error) => {
@@ -19,25 +14,27 @@ process.on('uncaughtException', (error: Error) => {
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
+  logger.error('Unhandled Rejection:', { reason, promise });
   process.exit(1);
 });
 
-// Handle SIGTERM signal
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM signal received');
-  server.close(() => {
-    logger.info('Server closed');
-    process.exit(0);
-  });
-});
+// Initialize database and start server
+async function startServer() {
+  try {
+    await initializeDatabase();
+    
+    server.listen(config.port, () => {
+      logger.info(`Server is running on port ${config.port}`);
+      logger.info(`Environment: ${config.nodeEnv}`);
+      logger.info(`API URL: ${config.server.url}`);
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
 
-// Handle SIGINT signal
-process.on('SIGINT', () => {
-  logger.info('SIGINT signal received');
-  server.close(() => {
-    logger.info('Server closed');
-    process.exit(0);
-  });
-});
+startServer();
+
+export default server;

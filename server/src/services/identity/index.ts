@@ -1,4 +1,4 @@
-import { createLogger } from '../../utils/logger.js';
+import logger from '../../utils/logger.js';
 import { getRepository } from 'typeorm';
 import { User, UserProvider } from '../../models/User.js';
 import bcrypt from 'bcryptjs';
@@ -6,7 +6,6 @@ import jwt from 'jsonwebtoken';
 import { config } from '../../config/env.js';
 import { AppError } from '../../middleware/error.js';
 
-const logger = createLogger('identity-service');
 
 interface TokenPair {
   accessToken: string;

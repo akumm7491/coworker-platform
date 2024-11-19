@@ -1,9 +1,8 @@
 import { EntityRepository, Repository } from 'typeorm';
 import bcrypt from 'bcryptjs';
 import { User, UserProvider } from '../models/User.js';
-import { createLogger } from '../utils/logger.js';
+import logger from '../utils/logger.js';
 
-const logger = createLogger('user-repository');
 
 @EntityRepository(User)
 export class UserRepository extends Repository<User> {

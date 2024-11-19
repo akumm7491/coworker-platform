@@ -1,7 +1,7 @@
-import { createLogger } from '../utils/logger.js';
+import { createBaseLogger } from '../utils/baseLogger.js';
 
 // Create default logger instance
-const logger = createLogger('app');
+const logger = createBaseLogger('app');
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error: Error) => {

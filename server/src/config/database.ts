@@ -1,17 +1,15 @@
 import { DataSource } from 'typeorm';
-import { createLogger } from '../utils/logger.js';
+import logger from '../utils/logger.js';
 import { User } from '../models/User.js';
 import { Project } from '../models/Project.js';
 import { Agent } from '../models/Agent.js';
-
-const logger = createLogger('database');
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
   url: process.env.POSTGRES_URL,
   entities: [User, Project, Agent],
   migrations: ['src/migrations/*.ts'],
-  synchronize: process.env.NODE_ENV === 'development',
+  synchronize: true, // Temporarily enable synchronize to create tables
   logging: process.env.NODE_ENV === 'development',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });

@@ -1,6 +1,5 @@
-import { createLogger } from '../../utils/logger.js';
+import logger from '../../utils/logger.js';
 
-const logger = createLogger('billing-service');
 
 interface BillingPlan {
   id: string;

@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { createLogger } from '../utils/logger.js';
+import logger from '../utils/logger.js';
 
-const logger = createLogger('error-handler');
 
 export class AppError extends Error {
   statusCode: number;

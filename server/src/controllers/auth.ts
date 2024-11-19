@@ -1,13 +1,11 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { AppError } from '../middleware/error.js';
-import { createLogger } from '../utils/logger.js';
+import logger from '../utils/logger.js';
 import { UserRepository } from '../repositories/UserRepository.js';
 import { AppDataSource } from '../config/database.js';
 import { createToken } from '../middleware/auth.js';
 import { UserProvider } from '../models/User.js';
-
-const logger = createLogger('auth-controller');
 
 // @desc    Register user
 // @route   POST /api/auth/register

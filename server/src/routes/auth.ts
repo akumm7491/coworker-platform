@@ -3,9 +3,8 @@ import { AppDataSource } from '../config/database.js';
 import { User } from '../models/User.js';
 import { createToken, authenticateLogin } from '../middleware/auth.js';
 import { AppError } from '../middleware/error.js';
-import { createLogger } from '../utils/logger.js';
+import logger from '../utils/logger.js';
 
-const logger = createLogger('auth-routes');
 const router = Router();
 const userRepository = AppDataSource.getRepository(User);
 

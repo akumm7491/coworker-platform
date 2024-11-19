@@ -2,12 +2,11 @@ import { Router } from 'express';
 import { AppDataSource } from '../config/database.js';
 import { FindOptionsWhere } from 'typeorm';
 import { Project, ProjectStatus } from '../models/Project.js';
-import { createLogger } from '../utils/logger.js';
+import logger from '../utils/logger.js';
 import { AsyncRouteHandler } from '../types/route-handler.js';
 import { protect } from '../middleware/auth.js';
 import { User } from '../models/User.js';
 
-const logger = createLogger('project-routes');
 const router = Router();
 const projectRepository = AppDataSource.getRepository(Project);
 

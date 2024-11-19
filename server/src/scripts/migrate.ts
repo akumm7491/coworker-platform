@@ -1,7 +1,6 @@
 import { Client } from 'pg';
-import { createLogger } from '../utils/logger.js';
+import logger from '../utils/logger.js';
 
-const logger = createLogger('migrate');
 
 async function connectToDatabase(): Promise<Client> {
   const client = new Client({

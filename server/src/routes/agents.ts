@@ -1,11 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { AppDataSource } from '../config/database.js';
 import { Agent, AgentStatus } from '../models/Agent.js';
-import { createLogger } from '../utils/logger.js';
+import logger from '../utils/logger.js';
 import { AsyncRouteHandler } from '../types/route-handler.js';
 import { AppError } from '../middleware/error.js';
 
-const logger = createLogger('agent-routes');
 const router = Router();
 const agentRepository = AppDataSource.getRepository(Agent);
 

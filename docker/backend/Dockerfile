@@ -1,20 +1,19 @@
 # Development stage
 FROM node:18.20.4-alpine
 
-WORKDIR /app
+WORKDIR /app/server
 
 # Install build dependencies
 RUN apk add --no-cache python3 make g++ git
 
 # Copy package files
-COPY server/package*.json ./server/
-COPY server/tsconfig.json ./server/
-
-# Set working directory to server
-WORKDIR /app/server
+COPY server/package*.json ./
+COPY server/tsconfig.json ./
 
 # Install dependencies with legacy peer deps to handle compatibility issues
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps && \
+    npm install -g tsx && \
+    npm install reflect-metadata@0.1.13
 
 # Copy source code
 COPY server/src/ ./src/
@@ -23,9 +22,8 @@ COPY shared/ ../shared/
 # Set Node.js options for development
 ENV NODE_ENV=development
 ENV DEBUG=*
-ENV NODE_OPTIONS="--experimental-specifier-resolution=node"
 
 EXPOSE 3457
 
 # Start the server in development mode
-CMD ["npm", "run", "dev"]
+CMD ["tsx", "src/server.ts"]

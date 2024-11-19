@@ -4,7 +4,7 @@ import { Strategy as JwtStrategy, ExtractJwt, JwtPayload } from 'passport-jwt';
 import { Strategy as GoogleStrategy, Profile } from 'passport-google-oauth20';
 import bcrypt from 'bcryptjs';
 import { Request } from 'express';
-import { createLogger } from '../utils/logger.js';
+import logger from '../utils/logger.js';
 import { config } from './env.js';
 import { userRepository } from '../repositories/user.repository.js';
 import { UserProvider } from '../models/User.js';
@@ -18,7 +18,6 @@ interface GoogleProfile extends Omit<Profile, 'displayName'> {
 
 type DoneCallback = (error: any, user?: any, info?: { message: string }) => void;
 
-const logger = createLogger('passport-config');
 
 // Configure Local Strategy
 passport.use(
@@ -59,7 +58,7 @@ passport.use(
     },
     async (req: Request, payload: JwtPayload, done: DoneCallback) => {
       try {
-        const user = await userRepository.findById(payload.id);
+        const user = await userRepository.findByEmail(payload.id);
         if (!user) {
           return done(null, false, { message: 'User not found' });
         }

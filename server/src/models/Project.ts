@@ -26,7 +26,7 @@ export class Project {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   name!: string;
 
   @Column({ type: 'text', nullable: true })
@@ -45,7 +45,7 @@ export class Project {
   @Column('simple-array', { nullable: true })
   agents_assigned?: string[];
 
-  @Column()
+  @Column({ type: 'uuid' })
   ownerId!: string;
 
   @ManyToOne(() => User, user => user.ownedProjects)
