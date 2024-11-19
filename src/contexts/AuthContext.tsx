@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
 import { AuthUser } from '@/types/auth';
 import { loginStart, loginSuccess, loginFailure } from '@/store/slices/authSlice';
-import { login, register } from '@/services/api';
+import api from '@/services/api';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -31,17 +31,13 @@ const AuthContext = createContext<AuthContextType>({
   loading: false,
   accessToken: null,
   refreshToken: null,
-  openLogin: () => console.log('Auth context not initialized'),
-  openSignup: () => console.log('Auth context not initialized'),
-  closeModals: () => console.log('Auth context not initialized'),
+  openLogin: () => {},
+  openSignup: () => {},
+  closeModals: () => {},
   isLoginOpen: false,
   isSignupOpen: false,
-  handleLogin: async () => {
-    console.log('Auth context not initialized');
-  },
-  handleSignup: async () => {
-    console.log('Auth context not initialized');
-  },
+  handleLogin: async () => {},
+  handleSignup: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -77,13 +73,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleLogin = async (email: string, password: string) => {
     try {
       dispatch(loginStart());
-      const response = await login({ email, password });
-      
-      // Store auth data in localStorage
-      localStorage.setItem('accessToken', response.accessToken);
-      localStorage.setItem('refreshToken', response.refreshToken);
-      localStorage.setItem('userData', JSON.stringify(response.user));
-      
+      const response = await api.login({ email, password });
       dispatch(loginSuccess(response));
       closeModals();
     } catch (error) {
@@ -100,7 +90,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   ) => {
     try {
       dispatch(loginStart());
-      const response = await register({ name, email, password, confirmPassword });
+      const response = await api.register({ name, email, password, confirmPassword });
       dispatch(loginSuccess(response));
       closeModals();
     } catch (error) {
@@ -130,3 +120,5 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+export default AuthContext;

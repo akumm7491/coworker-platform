@@ -36,8 +36,12 @@ export const LoginModal = ({ onClose }: LoginModalProps) => {
     try {
       await handleLogin(formData.email, formData.password);
       onClose();
-    } catch (error) {
-      setServerError(error instanceof Error ? error.message : 'Login failed');
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        setServerError(error.response.data.message);
+      } else {
+        setServerError(error.message || 'Login failed');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -60,7 +64,7 @@ export const LoginModal = ({ onClose }: LoginModalProps) => {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -74,10 +78,15 @@ export const LoginModal = ({ onClose }: LoginModalProps) => {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-xl bg-white dark:bg-gray-800 p-6 text-left align-middle shadow-xl transition-all">
                 <Dialog.Title as="div" className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold leading-6 text-gray-900">Sign In</h3>
-                  <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+                  <h3 className="text-xl font-semibold leading-6 text-gray-900 dark:text-white">
+                    Sign In
+                  </h3>
+                  <button
+                    onClick={onClose}
+                    className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
+                  >
                     <XMarkIcon className="h-6 w-6" />
                   </button>
                 </Dialog.Title>
@@ -88,9 +97,9 @@ export const LoginModal = ({ onClose }: LoginModalProps) => {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="mb-4 flex items-center gap-2 rounded-md bg-red-50 p-3 text-red-700"
+                      className="mb-4 flex items-center gap-2 rounded-md bg-red-50 dark:bg-red-900/20 p-3 text-red-700 dark:text-red-400"
                     >
-                      <XCircleIcon className="h-5 w-5 text-red-400" />
+                      <XCircleIcon className="h-5 w-5 text-red-400 dark:text-red-500" />
                       {serverError}
                     </motion.div>
                   )}
@@ -98,7 +107,10 @@ export const LoginModal = ({ onClose }: LoginModalProps) => {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
                       Email
                     </label>
                     <input
@@ -107,14 +119,19 @@ export const LoginModal = ({ onClose }: LoginModalProps) => {
                       id="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400"
                       required
                     />
-                    {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+                    {errors.email && (
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
+                    )}
                   </div>
 
                   <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="password"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
                       Password
                     </label>
                     <input
@@ -123,44 +140,37 @@ export const LoginModal = ({ onClose }: LoginModalProps) => {
                       id="password"
                       value={formData.password}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-400"
                       required
                     />
                     {errors.password && (
-                      <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                        {errors.password}
+                      </p>
                     )}
                   </div>
 
-                  <div className="mt-6 space-y-4">
+                  <div className="mt-6">
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full flex justify-center items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-400"
                     >
-                      {isLoading ? <Spinner size="sm" /> : 'Sign In'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/google`;
-                      }}
-                      className="w-full flex items-center justify-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                    >
-                      <img src="/google.svg" alt="Google" className="h-5 w-5" />
-                      Continue with Google
+                      {isLoading ? <Spinner className="h-5 w-5" /> : 'Sign In'}
                     </button>
                   </div>
 
-                  <div className="mt-4 text-center text-sm text-gray-500">
-                    Don&apos;t have an account?{' '}
-                    <button
-                      type="button"
-                      onClick={handleSignupClick}
-                      className="font-semibold text-blue-600 hover:text-blue-500"
-                    >
-                      Sign up
-                    </button>
+                  <div className="mt-4 text-center">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Don&apos;t have an account?{' '}
+                      <button
+                        type="button"
+                        onClick={handleSignupClick}
+                        className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        Sign up
+                      </button>
+                    </p>
                   </div>
                 </form>
               </Dialog.Panel>

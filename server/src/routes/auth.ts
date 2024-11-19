@@ -1,9 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { AppDataSource } from '../config/database.js';
 import { User } from '../models/User.js';
-import { createToken, authenticateLogin } from '../middleware/auth.js';
+import { createToken, authenticateLogin, protect } from '../middleware/auth.js';
 import { AppError } from '../middleware/error.js';
 import logger from '../utils/logger.js';
+import { getCurrentUser } from '../controllers/auth.js';
 
 const router = Router();
 const userRepository = AppDataSource.getRepository(User);
@@ -51,14 +52,15 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
     // Check if user already exists
     const existingUser = await userRepository.findOne({ where: { email } });
     if (existingUser) {
-      throw new AppError('User already exists', 409);
+      throw new AppError('User already exists', 400);
     }
 
     // Create new user
-    const user = new User();
-    user.email = email;
-    user.password = password;
-    user.name = name;
+    const user = userRepository.create({
+      email,
+      password,
+      name,
+    });
 
     await userRepository.save(user);
 
@@ -81,5 +83,8 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
     next(error);
   }
 });
+
+// Get current user
+router.get('/me', protect, getCurrentUser);
 
 export default router;

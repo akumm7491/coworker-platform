@@ -3,7 +3,7 @@ import { RouterProvider } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/store';
 import { loginStart, loginSuccess, loginFailure } from '@/store/slices/authSlice';
-import { getCurrentUser } from '@/services/api';
+import api from '@/services/api';
 import { router } from './router';
 import { AuthProvider } from '@/contexts/AuthContext';
 
@@ -22,20 +22,22 @@ const App: React.FC = () => {
         dispatch(loginStart());
         try {
           // Verify the session with the backend
-          const currentUser = await getCurrentUser();
+          const currentUser = await api.getCurrentUser();
 
           // Update the auth state with verified user data and tokens
           dispatch(
             loginSuccess({
               success: true,
               user: currentUser,
-              accessToken,
-              refreshToken,
+              tokens: {
+                accessToken,
+                refreshToken,
+              },
             })
           );
         } catch (error) {
-          dispatch(loginFailure(error instanceof Error ? error.message : 'Authentication failed'));
-          // Clear local storage on auth failure
+          dispatch(loginFailure(error instanceof Error ? error.message : 'Session verification failed'));
+          // Clear invalid tokens
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('userData');
