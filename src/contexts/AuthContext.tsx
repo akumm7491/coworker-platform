@@ -78,6 +78,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       dispatch(loginStart());
       const response = await login({ email, password });
+      
+      // Store auth data in localStorage
+      localStorage.setItem('accessToken', response.accessToken);
+      localStorage.setItem('refreshToken', response.refreshToken);
+      localStorage.setItem('userData', JSON.stringify(response.user));
+      
       dispatch(loginSuccess(response));
       closeModals();
     } catch (error) {

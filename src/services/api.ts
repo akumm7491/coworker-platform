@@ -54,17 +54,19 @@ api.interceptors.request.use(
 // Authentication
 export async function login(data: LoginData): Promise<AuthResponse> {
   const response = await api.post<AuthResponse>('/api/auth/login', data);
-  const { accessToken, refreshToken } = response.data;
-  localStorage.setItem('accessToken', accessToken);
-  localStorage.setItem('refreshToken', refreshToken);
+  const { tokens, user } = response.data;
+  localStorage.setItem('accessToken', tokens.accessToken);
+  localStorage.setItem('refreshToken', tokens.refreshToken);
+  localStorage.setItem('userData', JSON.stringify(user));
   return response.data;
 }
 
 export async function register(data: RegisterData): Promise<AuthResponse> {
   const response = await api.post<AuthResponse>('/api/auth/register', data);
-  const { accessToken, refreshToken } = response.data;
-  localStorage.setItem('accessToken', accessToken);
-  localStorage.setItem('refreshToken', refreshToken);
+  const { tokens, user } = response.data;
+  localStorage.setItem('accessToken', tokens.accessToken);
+  localStorage.setItem('refreshToken', tokens.refreshToken);
+  localStorage.setItem('userData', JSON.stringify(user));
   return response.data;
 }
 
@@ -84,10 +86,10 @@ export async function getCurrentUser(): Promise<AuthUser> {
 }
 
 // Projects
-export async function getProjects(): Promise<Project[]> {
+api.getProjects = async (): Promise<Project[]> => {
   const response = await api.get<Project[]>('/api/projects');
   return response.data;
-}
+};
 
 export async function createProject(data: Partial<Project>): Promise<Project> {
   const response = await api.post<Project>('/api/projects', data);

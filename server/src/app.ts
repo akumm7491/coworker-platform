@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import passport from 'passport';
 import { config } from './config/env.js';
 import logger from './utils/logger.js';
+import { configurePassport } from './config/passport-config.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -60,9 +61,9 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Authentication
+configurePassport();
 app.use(passport.initialize());
 
-app.use(limiter);
 app.use(securityHeaders);
 
 // Health check endpoint

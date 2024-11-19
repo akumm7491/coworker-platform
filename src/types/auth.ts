@@ -12,9 +12,10 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
-export interface AuthResponse extends AuthTokens {
+export interface AuthResponse {
   success: boolean;
   user: AuthUser;
+  tokens: AuthTokens;
 }
 
 export interface AuthState {

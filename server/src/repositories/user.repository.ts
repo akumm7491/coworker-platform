@@ -1,9 +1,9 @@
 import { Repository } from 'typeorm';
 import bcrypt from 'bcryptjs';
 import { User, UserProvider } from '../models/User.js';
-import { AppDataSource } from '../config/typeorm.js';
+// import { AppDataSource } from '../config/typeorm.js';
 import logger from '../utils/logger.js';
-
+import { AppDataSource } from '../config/database.js';
 
 interface CreateUserData {
   email: string;
