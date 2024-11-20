@@ -15,19 +15,15 @@ export interface Agent {
   description?: string;
   type: AgentType;
   status: AgentStatus;
+  workload: number;
+  activeTasks: number;
+  currentTask?: string;
+  capabilities?: string[];
+  maxConcurrentTasks?: number;
+  learningRate?: number;
   performance: {
     tasksCompleted: number;
     successRate: number;
     averageTime: number;
   };
-  capabilities?: string[];
-  createdAt?: string;
-  updatedAt?: string;
-  currentTask?: {
-    id: string;
-    title: string;
-    progress: number;
-  };
-  learningRate?: number;
-  maxConcurrentTasks?: number;
 }

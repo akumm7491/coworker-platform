@@ -4,7 +4,10 @@ export interface ProjectIntegration {
   id: string;
   type: 'github' | 'gitlab' | 'jira' | 'slack' | 'aws' | 'azure';
   name: string;
+  description: string;
   status: 'active' | 'inactive' | 'error';
+  updatedAt: string;
+  lastSync?: string;
   config: {
     apiKey?: string;
     url?: string;
@@ -19,7 +22,6 @@ export interface ProjectIntegration {
     };
     settings?: Record<string, string | number | boolean>;
   };
-  lastSync: string;
 }
 
 export interface ProjectEnvironment {
@@ -57,9 +59,15 @@ export interface Project {
     branch: string;
     lastCommit?: string;
   };
+  url: string;
+  branch: string;
+  lastCommit?: string;
   settings: {
     autoAssign: boolean;
     requireReview: boolean;
     notifyOnChange: boolean;
   };
+  autoAssign: boolean;
+  requireReview: boolean;
+  notifyOnChange: boolean;
 }
