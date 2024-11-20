@@ -21,6 +21,7 @@ export enum AgentStatus {
 }
 
 export enum AgentType {
+  ASSISTANT = 'assistant',
   GENERAL = 'general',
   SPECIALIZED = 'specialized',
   CUSTOM = 'custom',
@@ -29,16 +30,15 @@ export enum AgentType {
 export enum AgentScope {
   PROJECT = 'project',
   ORGANIZATION = 'organization',
-  GLOBAL = 'global',
 }
 
-@Entity()
+@Entity('agents')
 export class Agent {
   @PrimaryGeneratedColumn('uuid')
-  id!: string;
+  id: string;
 
   @Column({ type: 'varchar', length: 255 })
-  name!: string;
+  name: string;
 
   @Column({ type: 'text', nullable: true })
   description?: string;
@@ -48,28 +48,28 @@ export class Agent {
     enum: AgentStatus,
     default: AgentStatus.IDLE,
   })
-  status!: AgentStatus;
+  status: AgentStatus;
 
   @Column({
     type: 'enum',
     enum: AgentType,
-    default: AgentType.GENERAL,
+    default: AgentType.ASSISTANT,
   })
-  type!: AgentType;
+  type: AgentType;
 
   @Column({
     type: 'enum',
     enum: AgentScope,
     default: AgentScope.PROJECT,
   })
-  scope!: AgentScope;
+  scope: AgentScope;
 
   @Column({ type: 'uuid' })
-  ownerId!: string;
+  ownerId: string;
 
   @ManyToOne(() => User, user => user.agents)
   @JoinColumn({ name: 'ownerId' })
-  owner!: User;
+  owner: User;
 
   @ManyToMany(() => Project, project => project.agents)
   @JoinTable({
@@ -77,7 +77,7 @@ export class Agent {
     joinColumn: { name: 'agentId', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'projectId', referencedColumnName: 'id' },
   })
-  projects!: Project[];
+  projects: Project[];
 
   @Column({
     type: 'jsonb',
@@ -94,7 +94,7 @@ export class Agent {
       },
     },
   })
-  capabilities!: {
+  capabilities: {
     skills: string[];
     languages: string[];
     tools: string[];
@@ -120,7 +120,7 @@ export class Agent {
       },
     },
   })
-  settings!: {
+  settings: {
     maxConcurrentTasks: number;
     timeout: number;
     retryAttempts: number;
@@ -152,7 +152,7 @@ export class Agent {
       metrics: {},
     },
   })
-  performance!: {
+  performance: {
     tasksCompleted: number;
     successRate: number;
     averageResponseTime: number;
@@ -179,7 +179,7 @@ export class Agent {
     nullable: false,
     default: [],
   })
-  currentTasks!: Array<{
+  currentTasks: Array<{
     id: string;
     projectId: string;
     type: string;
@@ -194,10 +194,10 @@ export class Agent {
   metadata?: Record<string, unknown>;
 
   @CreateDateColumn()
-  createdAt!: Date;
+  createdAt: Date;
 
   @UpdateDateColumn()
-  updatedAt!: Date;
+  updatedAt: Date;
 
   // Helper methods
   updateStatus(newStatus: AgentStatus): void {
@@ -205,38 +205,20 @@ export class Agent {
   }
 
   updateCapabilities(capabilities: Partial<NonNullable<Agent['capabilities']>>): void {
-    this.capabilities = {
-      skills: capabilities.skills || this.capabilities.skills,
-      languages: capabilities.languages || this.capabilities.languages,
-      tools: capabilities.tools || this.capabilities.tools,
-      apis: capabilities.apis || this.capabilities.apis,
-      permissions: capabilities.permissions || this.capabilities.permissions,
-      concurrency: capabilities.concurrency || this.capabilities.concurrency,
-    };
+    this.capabilities = { ...this.capabilities, ...capabilities };
   }
 
   updateSettings(settings: Partial<NonNullable<Agent['settings']>>): void {
-    this.settings = {
-      maxConcurrentTasks: settings.maxConcurrentTasks || this.settings.maxConcurrentTasks,
-      timeout: settings.timeout || this.settings.timeout,
-      retryAttempts: settings.retryAttempts || this.settings.retryAttempts,
-      priority: settings.priority || this.settings.priority,
-      notificationPreferences:
-        settings.notificationPreferences || this.settings.notificationPreferences,
-      projectSpecificSettings:
-        settings.projectSpecificSettings || this.settings.projectSpecificSettings,
-      customSettings: settings.customSettings || this.settings.customSettings,
-    };
+    this.settings = { ...this.settings, ...settings };
   }
 
   updateProjectSettings(projectId: string, settings: Record<string, unknown>): void {
     if (!this.settings.projectSpecificSettings) {
       this.settings.projectSpecificSettings = {};
     }
-
     this.settings.projectSpecificSettings[projectId] = {
-      priority: 1,
-      customSettings: settings,
+      ...this.settings.projectSpecificSettings[projectId],
+      ...settings,
     };
   }
 
@@ -246,14 +228,7 @@ export class Agent {
     success: boolean,
     duration: number,
   ): void {
-    this.performance.tasksCompleted++;
-    const totalSuccess =
-      this.performance.successRate * (this.performance.tasksCompleted - 1) + (success ? 1 : 0);
-    this.performance.successRate = totalSuccess / this.performance.tasksCompleted;
-    this.performance.averageResponseTime =
-      (this.performance.averageResponseTime * (this.performance.tasksCompleted - 1) + duration) /
-      this.performance.tasksCompleted;
-
+    // Update lastNTasks
     this.performance.lastNTasks.push({
       taskId,
       projectId,
@@ -262,10 +237,22 @@ export class Agent {
       timestamp: new Date(),
     });
 
-    if (this.performance.lastNTasks.length > 10) {
-      this.performance.lastNTasks.shift();
+    // Keep only last 100 tasks
+    if (this.performance.lastNTasks.length > 100) {
+      this.performance.lastNTasks = this.performance.lastNTasks.slice(-100);
     }
 
+    // Update overall metrics
+    this.performance.tasksCompleted += 1;
+    const totalTasks = this.performance.lastNTasks.length;
+    const successfulTasks = this.performance.lastNTasks.filter(
+      task => task.status === 'success',
+    ).length;
+    this.performance.successRate = (successfulTasks / totalTasks) * 100;
+    this.performance.averageResponseTime =
+      (this.performance.averageResponseTime * (totalTasks - 1) + duration) / totalTasks;
+
+    // Update project-specific metrics
     if (!this.performance.projectMetrics[projectId]) {
       this.performance.projectMetrics[projectId] = {
         tasksCompleted: 0,
@@ -273,15 +260,18 @@ export class Agent {
         averageResponseTime: 0,
       };
     }
-
     const projectMetrics = this.performance.projectMetrics[projectId];
-    projectMetrics.tasksCompleted++;
-    const projectTotalSuccess =
-      projectMetrics.successRate * (projectMetrics.tasksCompleted - 1) + (success ? 1 : 0);
-    projectMetrics.successRate = projectTotalSuccess / projectMetrics.tasksCompleted;
+    projectMetrics.tasksCompleted += 1;
+    const projectTasks = this.performance.lastNTasks.filter(
+      task => task.projectId === projectId,
+    );
+    const projectSuccessfulTasks = projectTasks.filter(
+      task => task.status === 'success',
+    ).length;
+    projectMetrics.successRate = (projectSuccessfulTasks / projectTasks.length) * 100;
     projectMetrics.averageResponseTime =
-      (projectMetrics.averageResponseTime * (projectMetrics.tasksCompleted - 1) + duration) /
-      projectMetrics.tasksCompleted;
+      (projectMetrics.averageResponseTime * (projectTasks.length - 1) + duration) /
+      projectTasks.length;
   }
 
   startTask(taskId: string, projectId: string, type: string, dependencies?: string[]): void {
@@ -304,7 +294,7 @@ export class Agent {
   }
 
   completeTask(taskId: string): void {
-    this.currentTasks = this.currentTasks.filter(t => t.id !== taskId);
+    this.currentTasks = this.currentTasks.filter(task => task.id !== taskId);
   }
 
   pauseTask(taskId: string): void {
@@ -322,10 +312,17 @@ export class Agent {
   }
 
   addProject(project: Project): void {
-    this.projects.push(project);
+    if (!this.projects) {
+      this.projects = [];
+    }
+    if (!this.projects.find(p => p.id === project.id)) {
+      this.projects.push(project);
+    }
   }
 
   removeProject(projectId: string): void {
-    this.projects = this.projects.filter(p => p.id !== projectId);
+    if (this.projects) {
+      this.projects = this.projects.filter(project => project.id !== projectId);
+    }
   }
 }

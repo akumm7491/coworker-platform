@@ -59,7 +59,7 @@ const TasksList: React.FC<TasksListProps> = ({ tasks, onTaskClick }) => {
             <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
               <div className="flex items-center">
                 <ClockIcon className="w-4 h-4 mr-1" />
-                {formatDistanceToNow(new Date(task.created_at), { addSuffix: true })}
+                {formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}
               </div>
               <div className="flex items-center space-x-4">
                 {task.agent && (

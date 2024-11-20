@@ -25,5 +25,5 @@ ENV DEBUG=*
 
 EXPOSE 3457
 
-# Start the server in development mode
-CMD ["tsx", "src/server.ts"]
+# Start the server using tsx
+CMD ["tsx", "--tsconfig", "tsconfig.json", "src/server.ts"]

@@ -8,19 +8,28 @@ interface AgentsListProps {
 
 const typeColors = {
   assistant: 'bg-green-100 text-green-800',
-  worker: 'bg-blue-100 text-blue-800',
-  supervisor: 'bg-purple-100 text-purple-800',
+  general: 'bg-blue-100 text-blue-800',
+  specialized: 'bg-purple-100 text-purple-800',
   custom: 'bg-gray-100 text-gray-800',
 };
 
 const statusColors = {
-  active: 'bg-green-100 text-green-800',
   idle: 'bg-yellow-100 text-yellow-800',
-  offline: 'bg-gray-100 text-gray-800',
+  active: 'bg-green-100 text-green-800',
+  training: 'bg-blue-100 text-blue-800',
+  deployed: 'bg-purple-100 text-purple-800',
   error: 'bg-red-100 text-red-800',
 };
 
 const AgentsList: React.FC<AgentsListProps> = ({ agents, onAgentClick }) => {
+  if (!agents || agents.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">No agents assigned to this project yet.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {agents.map((agent) => (
@@ -54,15 +63,15 @@ const AgentsList: React.FC<AgentsListProps> = ({ agents, onAgentClick }) => {
             </div>
 
             <div className="mt-4">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium text-gray-700">Load</span>
-                <span className="text-sm font-medium text-gray-700">{agent.load}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full"
-                  style={{ width: `${agent.load}%` }}
-                />
+              <div className="flex flex-wrap gap-2">
+                {agent.capabilities.skills.map((skill, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                  >
+                    {skill}
+                  </span>
+                ))}
               </div>
             </div>
 
@@ -71,12 +80,12 @@ const AgentsList: React.FC<AgentsListProps> = ({ agents, onAgentClick }) => {
                 {agent.status}
               </span>
               <div className="flex space-x-2">
-                {agent.capabilities.map((capability, index) => (
+                {agent.capabilities.languages.map((language, index) => (
                   <span
                     key={index}
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                   >
-                    {capability}
+                    {language}
                   </span>
                 ))}
               </div>

@@ -6,9 +6,13 @@ import logger from '../utils/logger.js';
 import { AsyncRouteHandler } from '../types/route-handler.js';
 import { protect } from '../middleware/auth.js';
 import { User } from '../models/User.js';
+import tasksRouter from './tasks.js';
 
 const router = Router();
 const projectRepository = AppDataSource.getRepository(Project);
+
+// Mount tasks router
+router.use('/:projectId/tasks', tasksRouter);
 
 // GET /api/projects
 const getProjects: AsyncRouteHandler = async (req, res) => {
@@ -38,6 +42,7 @@ const getProject: AsyncRouteHandler = async (req, res) => {
 
     const project = await projectRepository.findOne({
       where: { id: req.params.id, ownerId: (req.user as User).id } as FindOptionsWhere<Project>,
+      relations: ['tasks'],
     });
 
     if (!project) {

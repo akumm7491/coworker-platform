@@ -8,17 +8,17 @@ import {
   JoinTable,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { User } from './User.js';
 import { Agent } from './Agent.js';
+import { Task } from './Task.js';
 
 export enum ProjectStatus {
   NOT_STARTED = 'not_started',
   IN_PROGRESS = 'in_progress',
   COMPLETED = 'completed',
   ON_HOLD = 'on_hold',
-  ARCHIVED = 'archived',
-  ACTIVE = 'active',
 }
 
 @Entity('projects')
@@ -63,18 +63,12 @@ export class Project {
   @ManyToMany(() => Agent, agent => agent.projects)
   agents!: Agent[];
 
+  @OneToMany(() => Task, task => task.project)
+  tasks: Task[];
+
   @CreateDateColumn()
   createdAt!: Date;
 
   @UpdateDateColumn()
   updatedAt!: Date;
-
-  @Column({ type: 'jsonb', nullable: true })
-  metadata?: {
-    tags?: string[];
-    priority?: number;
-    deadline?: Date;
-    budget?: number;
-    customFields?: Record<string, unknown>;
-  };
 }
