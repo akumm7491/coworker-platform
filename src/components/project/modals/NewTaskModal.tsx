@@ -3,23 +3,21 @@ import { Dialog, Transition } from '@headlessui/react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/store';
 import { createTask } from '@/store/slices/tasksSlice';
-import { Project, ProjectTask } from '@/types';
+import { ProjectTask } from '@/types';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface NewTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  project: Project;
+  projectId: string;
 }
 
-const NewTaskModal = ({ isOpen, onClose, project }: NewTaskModalProps) => {
+const NewTaskModal = ({ isOpen, onClose, projectId }: NewTaskModalProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    priority: 'medium' as const,
     status: 'todo' as const,
-    assigneeId: '',
   });
 
   const handleInputChange = (
@@ -35,10 +33,9 @@ const NewTaskModal = ({ isOpen, onClose, project }: NewTaskModalProps) => {
     try {
       await dispatch(
         createTask({
-          projectId: project.id,
+          projectId,
           task: {
             ...formData,
-            progress: 0,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },
@@ -49,9 +46,7 @@ const NewTaskModal = ({ isOpen, onClose, project }: NewTaskModalProps) => {
       setFormData({
         title: '',
         description: '',
-        priority: 'medium',
         status: 'todo',
-        assigneeId: '',
       });
     } catch (error) {
       console.error('Error creating task:', error);
@@ -133,22 +128,6 @@ const NewTaskModal = ({ isOpen, onClose, project }: NewTaskModalProps) => {
                           />
                         </div>
                         <div>
-                          <label htmlFor="priority" className="block text-sm font-medium text-gray-700">
-                            Priority
-                          </label>
-                          <select
-                            name="priority"
-                            id="priority"
-                            value={formData.priority}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                          >
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
-                          </select>
-                        </div>
-                        <div>
                           <label htmlFor="status" className="block text-sm font-medium text-gray-700">
                             Status
                           </label>
@@ -163,19 +142,6 @@ const NewTaskModal = ({ isOpen, onClose, project }: NewTaskModalProps) => {
                             <option value="in_progress">In Progress</option>
                             <option value="completed">Completed</option>
                           </select>
-                        </div>
-                        <div>
-                          <label htmlFor="assigneeId" className="block text-sm font-medium text-gray-700">
-                            Assignee ID
-                          </label>
-                          <input
-                            type="text"
-                            name="assigneeId"
-                            id="assigneeId"
-                            value={formData.assigneeId}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                          />
                         </div>
                         <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
                           <button

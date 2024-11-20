@@ -1,19 +1,23 @@
 import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store';
 import { updateProject } from '@/store/slices/projectsSlice';
-import { Project, ProjectIntegration } from '@/types';
+import { ProjectIntegration } from '@/types';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface NewIntegrationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  project: Project;
+  projectId: string;
 }
 
-const NewIntegrationModal = ({ isOpen, onClose, project }: NewIntegrationModalProps) => {
+const NewIntegrationModal = ({ isOpen, onClose, projectId }: NewIntegrationModalProps) => {
   const dispatch = useDispatch<AppDispatch>();
+  const project = useSelector((state: RootState) => 
+    state.projects.projects.find(p => p.id === projectId)
+  );
+  
   const [formData, setFormData] = useState({
     name: '',
     type: 'github',
@@ -147,6 +151,11 @@ const NewIntegrationModal = ({ isOpen, onClose, project }: NewIntegrationModalPr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!project) {
+      console.error('Project not found');
+      return;
+    }
+
     try {
       const newIntegration: ProjectIntegration = {
         id: Date.now().toString(),
@@ -158,7 +167,7 @@ const NewIntegrationModal = ({ isOpen, onClose, project }: NewIntegrationModalPr
 
       await dispatch(
         updateProject({
-          id: project.id,
+          id: projectId,
           integrations: [...(project.integrations || []), newIntegration],
         })
       ).unwrap();
@@ -212,78 +221,73 @@ const NewIntegrationModal = ({ isOpen, onClose, project }: NewIntegrationModalPr
                     <XMarkIcon className="h-6 w-6" aria-hidden="true" />
                   </button>
                 </div>
+
                 <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                    <Dialog.Title
-                      as="h3"
-                      className="text-base font-semibold leading-6 text-gray-900"
-                    >
+                  <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                    <Dialog.Title as="h3" className="text-base font-semibold leading-6 text-gray-900">
                       New Integration
                     </Dialog.Title>
-                    <div className="mt-2">
-                      <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                            Name
-                          </label>
-                          <input
-                            type="text"
-                            name="name"
-                            id="name"
-                            value={formData.name}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="type" className="block text-sm font-medium text-gray-700">
-                            Type
-                          </label>
-                          <select
-                            name="type"
-                            id="type"
-                            value={formData.type}
-                            onChange={handleInputChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                          >
-                            <option value="github">GitHub</option>
-                            <option value="gitlab">GitLab</option>
-                            <option value="jira">Jira</option>
-                            <option value="slack">Slack</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                            Description
-                          </label>
-                          <textarea
-                            name="description"
-                            id="description"
-                            value={formData.description}
-                            onChange={handleInputChange}
-                            rows={3}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                          />
-                        </div>
-                        {renderConfigFields()}
-                        <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-                          <button
-                            type="submit"
-                            className="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto"
-                          >
-                            Create Integration
-                          </button>
-                          <button
-                            type="button"
-                            className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
-                            onClick={onClose}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </form>
-                    </div>
+                    <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+                      <div>
+                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                          Name
+                        </label>
+                        <input
+                          type="text"
+                          name="name"
+                          id="name"
+                          required
+                          value={formData.name}
+                          onChange={handleInputChange}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="type" className="block text-sm font-medium text-gray-700">
+                          Type
+                        </label>
+                        <select
+                          name="type"
+                          id="type"
+                          value={formData.type}
+                          onChange={handleInputChange}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        >
+                          <option value="github">GitHub</option>
+                          <option value="jira">Jira</option>
+                          <option value="slack">Slack</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                          Description
+                        </label>
+                        <textarea
+                          name="description"
+                          id="description"
+                          value={formData.description}
+                          onChange={handleInputChange}
+                          rows={3}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        />
+                      </div>
+                      {renderConfigFields()}
+                      <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                        <button
+                          type="submit"
+                          className="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto"
+                        >
+                          Create
+                        </button>
+                        <button
+                          type="button"
+                          className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                          onClick={onClose}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
                   </div>
                 </div>
               </Dialog.Panel>

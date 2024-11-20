@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '@/store';
-import { Project } from '@/types/project';
 import TasksList from '@/components/project/TasksList';
 import AgentsList from '@/components/project/AgentsList';
 import IntegrationsList from '@/components/project/IntegrationsList';
@@ -58,9 +57,21 @@ const ProjectDetails = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const [activeTab, setActiveTab] = useState(0);
-  const { projects, loading: projectsLoading, error: projectsError } = useSelector((state: RootState) => state.projects);
-  const { tasks, loading: tasksLoading, error: tasksError } = useSelector((state: RootState) => state.tasks);
-  const { agents, loading: agentsLoading, error: agentsError } = useSelector((state: RootState) => state.agents);
+  const {
+    projects,
+    loading: projectsLoading,
+    error: projectsError,
+  } = useSelector((state: RootState) => state.projects);
+  const {
+    tasks,
+    loading: tasksLoading,
+    error: tasksError,
+  } = useSelector((state: RootState) => state.tasks);
+  const {
+    agents,
+    loading: agentsLoading,
+    error: agentsError,
+  } = useSelector((state: RootState) => state.agents);
   const project = projects.find(p => p.id === projectId);
 
   // Modal states
@@ -95,7 +106,10 @@ const ProjectDetails = () => {
   if (projectsError || tasksError || agentsError) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <div
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+          role="alert"
+        >
           <strong className="font-bold">Error!</strong>
           <span className="block sm:inline"> Failed to load project details.</span>
         </div>
@@ -106,7 +120,10 @@ const ProjectDetails = () => {
   if (!project) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative" role="alert">
+        <div
+          className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative"
+          role="alert"
+        >
           <strong className="font-bold">Not Found!</strong>
           <span className="block sm:inline"> Project not found.</span>
         </div>
@@ -173,9 +190,7 @@ const ProjectDetails = () => {
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 truncate">Tasks</dt>
                       <dd className="flex items-baseline">
-                        <div className="text-2xl font-semibold text-gray-900">
-                          {tasks.length}
-                        </div>
+                        <div className="text-2xl font-semibold text-gray-900">{tasks.length}</div>
                       </dd>
                     </dl>
                   </div>
@@ -277,7 +292,7 @@ const ProjectDetails = () => {
             </div>
             <TasksList
               tasks={tasks}
-              onTaskClick={(task) => {
+              onTaskClick={task => {
                 // Handle task click
                 console.log('Task clicked:', task);
               }}
@@ -313,7 +328,7 @@ const ProjectDetails = () => {
             </div>
             <IntegrationsList
               integrations={project.integrations || []}
-              onIntegrationClick={(integration) => {
+              onIntegrationClick={integration => {
                 // Handle integration click
                 console.log('Integration clicked:', integration);
               }}

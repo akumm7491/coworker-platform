@@ -44,30 +44,12 @@ export interface ProjectMetrics {
 export interface Project {
   id: string;
   name: string;
-  description: string;
-  type: 'analytics' | 'automation' | 'research';
-  status: 'analysis' | 'active' | 'paused' | 'completed' | 'idle' | 'working' | 'error';
-  agents: string[];
-  tasks: ProjectTask[];
-  integrations: ProjectIntegration[];
-  environments: ProjectEnvironment[];
-  metrics: ProjectMetrics;
+  description?: string;
+  status: 'not_started' | 'in_progress' | 'completed' | 'on_hold';
+  completion: number;
+  agents_assigned?: string[];
+  ownerId: string;
   createdAt: string;
   updatedAt: string;
-  repository?: {
-    url: string;
-    branch: string;
-    lastCommit?: string;
-  };
-  url: string;
-  branch: string;
-  lastCommit?: string;
-  settings: {
-    autoAssign: boolean;
-    requireReview: boolean;
-    notifyOnChange: boolean;
-  };
-  autoAssign: boolean;
-  requireReview: boolean;
-  notifyOnChange: boolean;
+  tasks?: ProjectTask[];
 }

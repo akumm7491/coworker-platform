@@ -1,15 +1,20 @@
 export interface ProjectTask {
   id: string;
-  projectId: string;
   title: string;
-  description?: string;
-  status: 'todo' | 'in_progress' | 'completed' | 'pending';
-  assigneeId?: string;
-  priority: 'low' | 'medium' | 'high';
-  dueDate?: string;
+  description?: string | null;
+  status: 'todo' | 'in_progress' | 'completed';
+  projectId: string;
   createdAt: string;
   updatedAt: string;
-  tags?: string[];
-  dependencies?: string[];
-  progress?: number;
+  project?: {
+    id: string;
+    name: string;
+    description?: string;
+    status: 'not_started' | 'in_progress' | 'completed' | 'on_hold';
+    completion: number;
+    agents_assigned?: string[];
+    ownerId: string;
+    createdAt: string;
+    updatedAt: string;
+  };
 }
