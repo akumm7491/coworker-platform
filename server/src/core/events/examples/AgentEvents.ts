@@ -51,6 +51,26 @@ export function createAgentCreatedEvent(
   };
 }
 
+export function createAgentUpdatedEvent(
+  agentId: string,
+  payload: Partial<z.infer<typeof AgentCreatedPayloadSchema>>,
+  metadata: Partial<EventMetadata> = {},
+): Event {
+  return {
+    id: uuidv4(),
+    type: AgentEventTypes.AGENT_UPDATED,
+    aggregateId: agentId,
+    aggregateType: 'agent',
+    metadata: {
+      timestamp: new Date(),
+      version: 1,
+      correlationId: uuidv4(),
+      ...metadata,
+    },
+    payload,
+  };
+}
+
 export function createAgentTaskAssignedEvent(
   agentId: string,
   payload: z.infer<typeof AgentTaskAssignedPayloadSchema>,
@@ -59,6 +79,31 @@ export function createAgentTaskAssignedEvent(
   return {
     id: uuidv4(),
     type: AgentEventTypes.AGENT_TASK_ASSIGNED,
+    aggregateId: agentId,
+    aggregateType: 'agent',
+    metadata: {
+      timestamp: new Date(),
+      version: 1,
+      correlationId: uuidv4(),
+      ...metadata,
+    },
+    payload,
+  };
+}
+
+export function createAgentTaskCompletedEvent(
+  agentId: string,
+  payload: {
+    taskId: string;
+    result: unknown;
+    status: 'SUCCESS' | 'FAILURE';
+    error?: string;
+  },
+  metadata: Partial<EventMetadata> = {},
+): Event {
+  return {
+    id: uuidv4(),
+    type: AgentEventTypes.AGENT_TASK_COMPLETED,
     aggregateId: agentId,
     aggregateType: 'agent',
     metadata: {

@@ -17,7 +17,9 @@ export class AgentReadModelRepository extends PostgresReadModelRepository<AgentR
       capabilities: Array.isArray(row.capabilities) ? row.capabilities.map(String) : [],
       currentTasks: Array.isArray(row.current_tasks) ? row.current_tasks.map(String) : [],
       lastUpdated: new Date(String(row.last_updated)),
-      lastProcessedPosition: row.last_processed_position ? Number(row.last_processed_position) : undefined,
+      lastProcessedPosition: row.last_processed_position
+        ? Number(row.last_processed_position)
+        : undefined,
     };
   }
 

@@ -38,6 +38,10 @@ services:
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - JWT_EXPIRES_IN=30d
       - NODE_OPTIONS=--experimental-specifier-resolution=node --es-module-specifier-resolution=node --no-warnings
+      - AGENT_SYSTEM_ENABLED=true
+      - AGENT_MAX_CONCURRENT_TASKS=5
+      - AGENT_TASK_TIMEOUT=300000
+      - EVENT_STORE_SCHEMA=event_store
     depends_on:
       mongodb:
         condition: service_healthy

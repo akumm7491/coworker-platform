@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 export interface Command<T = unknown> {
   id: string;
   type: string;
@@ -9,6 +7,7 @@ export interface Command<T = unknown> {
 
 export interface CommandMetadata {
   userId: string;
+  agentId?: string;
   timestamp: string;
   correlationId?: string;
   causationId?: string;
