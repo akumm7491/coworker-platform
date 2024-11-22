@@ -1,0 +1,25 @@
+{
+  "name": "@coworker/agent-service",
+  "version": "1.0.0",
+  "description": "Autonomous agent service for the Coworker Platform",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev src/index.ts",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@coworker/shared": "1.0.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.7",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.0"
+  }
+}
