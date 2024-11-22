@@ -31,13 +31,23 @@ const AuthContext = createContext<AuthContextType>({
   loading: false,
   accessToken: null,
   refreshToken: null,
-  openLogin: () => {},
-  openSignup: () => {},
-  closeModals: () => {},
+  openLogin: () => {
+    console.warn('AuthContext not initialized: openLogin called');
+  },
+  openSignup: () => {
+    console.warn('AuthContext not initialized: openSignup called');
+  },
+  closeModals: () => {
+    console.warn('AuthContext not initialized: closeModals called');
+  },
   isLoginOpen: false,
   isSignupOpen: false,
-  handleLogin: async () => {},
-  handleSignup: async () => {},
+  handleLogin: async () => {
+    console.warn('AuthContext not initialized: handleLogin called');
+  },
+  handleSignup: async () => {
+    console.warn('AuthContext not initialized: handleSignup called');
+  },
 });
 
 export const useAuth = () => useContext(AuthContext);

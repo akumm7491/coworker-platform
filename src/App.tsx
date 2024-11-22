@@ -36,7 +36,9 @@ const App: React.FC = () => {
             })
           );
         } catch (error) {
-          dispatch(loginFailure(error instanceof Error ? error.message : 'Session verification failed'));
+          dispatch(
+            loginFailure(error instanceof Error ? error.message : 'Session verification failed')
+          );
           // Clear invalid tokens
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');

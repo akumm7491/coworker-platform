@@ -3,7 +3,6 @@ import bcrypt from 'bcryptjs';
 import { User, UserProvider } from '../models/User.js';
 import logger from '../utils/logger.js';
 
-
 @EntityRepository(User)
 export class UserRepository extends Repository<User> {
   async findByEmail(email: string): Promise<User | null> {

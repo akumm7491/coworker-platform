@@ -30,7 +30,7 @@ const authSlice = createSlice({
       state.accessToken = action.payload.tokens.accessToken;
       state.refreshToken = action.payload.tokens.refreshToken;
       state.error = null;
-      
+
       // Save to localStorage
       saveTokens(action.payload.tokens);
       saveUser(action.payload.user);
@@ -42,7 +42,7 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.refreshToken = null;
       state.error = action.payload;
-      
+
       // Clear localStorage
       clearAuth();
     },
@@ -52,7 +52,7 @@ const authSlice = createSlice({
       state.refreshToken = null;
       state.isAuthenticated = false;
       state.error = null;
-      
+
       // Clear localStorage
       clearAuth();
     },

@@ -36,19 +36,15 @@ export const testAgent = {
 };
 
 export async function createTestUser(app: Application): Promise<any> {
-  const response = await request(app)
-    .post('/api/auth/register')
-    .send(testUser);
+  const response = await request(app).post('/api/auth/register').send(testUser);
   return response.body;
 }
 
 export async function loginTestUser(app: Application): Promise<string> {
-  const response = await request(app)
-    .post('/api/auth/login')
-    .send({
-      email: testUser.email,
-      password: testUser.password,
-    });
+  const response = await request(app).post('/api/auth/login').send({
+    email: testUser.email,
+    password: testUser.password,
+  });
   return response.body.token;
 }
 

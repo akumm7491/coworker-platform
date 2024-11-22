@@ -24,7 +24,7 @@ const statusColors = {
 const TasksList: React.FC<TasksListProps> = ({ tasks, onTaskClick }) => {
   return (
     <div className="space-y-4">
-      {tasks.map((task) => (
+      {tasks.map(task => (
         <div
           key={task.id}
           className="bg-white rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer"
@@ -37,20 +37,24 @@ const TasksList: React.FC<TasksListProps> = ({ tasks, onTaskClick }) => {
                 <p className="text-sm text-gray-500">{task.description}</p>
               </div>
               <div className="flex space-x-2">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${priorityColors[task.priority]}`}>
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${priorityColors[task.priority]}`}
+                >
                   <FlagIcon className="w-4 h-4 mr-1" />
                   {task.priority}
                 </span>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[task.status]}`}>
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[task.status]}`}
+                >
                   {task.status}
                 </span>
               </div>
             </div>
-            
+
             <div className="mt-4">
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full" 
+                <div
+                  className="bg-blue-600 h-2 rounded-full"
                   style={{ width: `${task.progress}%` }}
                 />
               </div>
@@ -67,11 +71,7 @@ const TasksList: React.FC<TasksListProps> = ({ tasks, onTaskClick }) => {
                     {task.agent}
                   </span>
                 )}
-                {task.assignee && (
-                  <span className="inline-flex items-center">
-                    {task.assignee}
-                  </span>
-                )}
+                {task.assignee && <span className="inline-flex items-center">{task.assignee}</span>}
               </div>
             </div>
           </div>

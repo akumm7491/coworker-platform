@@ -3,7 +3,7 @@ import { AppDataSource } from '../config/database.js';
 import { Project } from '../models/Project.js';
 import { Agent } from '../models/Agent.js';
 import logger from '../utils/logger.js';
-import { AsyncRouteHandler } from '../types/route-handler.js';
+import { AsyncRouteHandler, wrapHandler } from '../types/route-handler.js';
 import { AppError } from '../middleware/error.js';
 
 const router = Router();
@@ -89,11 +89,11 @@ const getUsage: AsyncRouteHandler = async (_req: Request, res: Response): Promis
     });
   } catch (error) {
     logger.error('Error getting usage analytics:', error);
-    throw error;
+    return res.status(500).json({ error: 'Failed to retrieve usage analytics' });
   }
 };
 
-router.get('/overview', requireAuth, getOverview);
-router.get('/usage', requireAuth, getUsage);
+router.get('/overview', requireAuth, wrapHandler(getOverview));
+router.get('/usage', requireAuth, wrapHandler(getUsage));
 
 export default router;

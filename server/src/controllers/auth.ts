@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import * as bcrypt from 'bcrypt';  // Using bcrypt consistently
+import * as bcrypt from 'bcrypt';
 import { AppDataSource } from '../config/database.js';
 import { User, UserProvider } from '../models/User.js';
 import { AppError } from '../middleware/error.js';
@@ -28,10 +28,10 @@ export const register = catchAsync(async (req: Request, res: Response) => {
   const existingUser = await userRepository.findOne({ where: { email } });
   if (existingUser) {
     // Log existing user's password hash for debugging
-    logger.info('Existing user found:', { 
-      email, 
+    logger.info('Existing user found:', {
+      email,
       passwordHash: existingUser.password,
-      userId: existingUser.id 
+      userId: existingUser.id,
     });
     throw new AppError('User already exists', 400);
   }

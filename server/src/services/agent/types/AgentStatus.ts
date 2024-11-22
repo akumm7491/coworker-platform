@@ -1,0 +1,8 @@
+export enum AgentStatus {
+  AVAILABLE = 'AVAILABLE',
+  BUSY = 'BUSY',
+  OFFLINE = 'OFFLINE',
+  ERROR = 'ERROR',
+  INITIALIZING = 'INITIALIZING',
+  TERMINATED = 'TERMINATED',
+}

@@ -8,6 +8,9 @@ import { AgentTaskExecutor } from './AgentTaskExecutor.js';
 export class AgentRunner {
   private isRunning = false;
   private currentTaskId: string | null = null;
+  private shutdownPromise: Promise<void> | null = null;
+  private shutdownResolve: (() => void) | null = null;
+  private readonly taskTimeout: number;
 
   constructor(
     private readonly agentId: string,
@@ -16,7 +19,10 @@ export class AgentRunner {
     private readonly agentRepository: AgentReadModelRepository,
     private readonly taskExecutor: AgentTaskExecutor,
     private readonly logger: Logger,
-  ) {}
+    config?: { taskTimeout?: number },
+  ) {
+    this.taskTimeout = config?.taskTimeout ?? 300000; // Default 5 minutes
+  }
 
   async start(): Promise<void> {
     if (this.isRunning) {
@@ -85,5 +91,53 @@ export class AgentRunner {
 
     this.currentTaskId = taskId;
     await this.taskExecutor.executeTask(taskId, taskType, parameters);
+  }
+
+  async gracefulStop(timeout?: number): Promise<void> {
+    if (!this.isRunning) {
+      return;
+    }
+
+    this.logger.info('Initiating graceful shutdown of agent runner', { agentId: this.agentId });
+
+    // Create shutdown promise if it doesn't exist
+    if (!this.shutdownPromise) {
+      this.shutdownPromise = new Promise(resolve => {
+        this.shutdownResolve = resolve;
+      });
+    }
+
+    // Set isRunning to false to stop the main loop
+    this.isRunning = false;
+
+    // Wait for current task to complete or timeout
+    const timeoutMs = timeout ?? this.taskTimeout;
+    try {
+      await Promise.race([
+        this.shutdownPromise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Shutdown timeout')), timeoutMs),
+        ),
+      ]);
+      this.logger.info('Agent runner gracefully stopped', { agentId: this.agentId });
+    } catch (error) {
+      this.logger.warn('Graceful shutdown timed out, forcing stop', {
+        agentId: this.agentId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      this.forceStop();
+    } finally {
+      this.shutdownPromise = null;
+      this.shutdownResolve = null;
+    }
+  }
+
+  forceStop(): void {
+    this.isRunning = false;
+    if (this.currentTaskId) {
+      this.taskExecutor.cancelTask(this.currentTaskId);
+    }
+    this.currentTaskId = null;
+    this.logger.info('Agent runner force stopped', { agentId: this.agentId });
   }
 }

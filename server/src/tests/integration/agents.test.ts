@@ -30,9 +30,7 @@ describe('Agents API', () => {
     });
 
     it('should return 401 without auth token', async () => {
-      const response = await request(app)
-        .post('/api/agents')
-        .send(testAgent);
+      const response = await request(app).post('/api/agents').send(testAgent);
 
       expect(response.status).toBe(401);
     });
@@ -68,8 +66,7 @@ describe('Agents API', () => {
     });
 
     it('should return 401 without auth token', async () => {
-      const response = await request(app)
-        .get('/api/agents');
+      const response = await request(app).get('/api/agents');
 
       expect(response.status).toBe(401);
     });
@@ -105,8 +102,7 @@ describe('Agents API', () => {
     });
 
     it('should return 401 without auth token', async () => {
-      const response = await request(app)
-        .get(`/api/agents/${agentId}`);
+      const response = await request(app).get(`/api/agents/${agentId}`);
 
       expect(response.status).toBe(401);
     });
@@ -150,9 +146,7 @@ describe('Agents API', () => {
     });
 
     it('should return 401 without auth token', async () => {
-      const response = await request(app)
-        .put(`/api/agents/${agentId}`)
-        .send(testAgent);
+      const response = await request(app).put(`/api/agents/${agentId}`).send(testAgent);
 
       expect(response.status).toBe(401);
     });
@@ -193,8 +187,7 @@ describe('Agents API', () => {
     });
 
     it('should return 401 without auth token', async () => {
-      const response = await request(app)
-        .delete(`/api/agents/${agentId}`);
+      const response = await request(app).delete(`/api/agents/${agentId}`);
 
       expect(response.status).toBe(401);
     });

@@ -1,168 +1,92 @@
+import express, { Router } from 'express';
+import cors from 'cors';
+import { AppDataSource } from '../../config/database.js';
+import { AuthController } from './controllers/authController.js';
+import { UserService } from './services/userService.js';
+import { User } from '../../models/User.js';
+import { errorHandler } from '../../middleware/error.js';
 import logger from '../../utils/logger.js';
-import { getRepository } from 'typeorm';
-import { User, UserProvider } from '../../models/User.js';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { config } from '../../config/env.js';
-import { AppError } from '../../middleware/error.js';
 
+const app = express();
+const port = parseInt(process.env.PORT || '3451', 10);
 
-interface TokenPair {
-  accessToken: string;
-  refreshToken: string;
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use((req, res, next) => {
+  logger.info(`${req.method} ${req.path}`);
+  next();
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'identity',
+    database: AppDataSource.isInitialized ? 'connected' : 'disconnected',
+  });
+});
+
+async function setupRoutes() {
+  try {
+    // Initialize services
+    const userRepository = AppDataSource.getRepository(User);
+    const userService = new UserService(userRepository);
+    const authController = new AuthController(userService);
+
+    // Routes
+    const router = Router();
+    router.post('/register', authController.register.bind(authController));
+    router.post('/login', authController.login.bind(authController));
+    router.post('/logout', authController.logout.bind(authController));
+    router.get('/me', authController.getCurrentUser.bind(authController));
+
+    app.use('/', router);
+  } catch (error) {
+    logger.error('Failed to setup routes:', error);
+    throw error;
+  }
 }
 
-interface LoginCredentials {
-  email: string;
-  password: string;
-}
+async function startServer() {
+  try {
+    // Initialize database connection
+    await AppDataSource.initialize();
+    logger.info('Database connection established');
 
-interface RegistrationData {
-  email: string;
-  password: string;
-  name: string;
-}
+    // Setup routes
+    await setupRoutes();
 
-class IdentityService {
-  async login({ email, password }: LoginCredentials): Promise<{ user: User; tokens: TokenPair }> {
-    try {
-      const userRepository = getRepository(User);
-      const user = await userRepository.findOne({ where: { email } });
-      if (!user) {
-        throw new AppError('Invalid credentials', 401);
-      }
+    // Add error handler middleware last
+    app.use(errorHandler);
 
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        throw new AppError('Invalid credentials', 401);
-      }
-
-      const tokens = this.generateTokens(user.id);
-      logger.info(`User logged in successfully: ${user.id}`);
-      return { user, tokens };
-    } catch (error) {
-      logger.error('Login failed:', error);
-      throw error;
-    }
-  }
-
-  async register(data: RegistrationData): Promise<{ user: User; tokens: TokenPair }> {
-    try {
-      const userRepository = getRepository(User);
-      const existingUser = await userRepository.findOne({ where: { email: data.email } });
-      if (existingUser) {
-        throw new AppError('Email already registered', 400);
-      }
-
-      const hashedPassword = await bcrypt.hash(data.password, 10);
-      const user = userRepository.create({
-        email: data.email,
-        password: hashedPassword,
-        name: data.name,
-        emailVerified: false,
-        provider: UserProvider.LOCAL,
-        preferences: {
-          theme: 'light',
-          notifications: {
-            email: true,
-            push: true,
-            desktop: true,
-          },
-          language: 'en',
-          timezone: 'UTC',
-        },
-        activity: {
-          lastLogin: new Date(),
-          lastActive: new Date(),
-          projectActivity: [],
-          agentActivity: [],
-        },
-      });
-
-      await userRepository.save(user);
-      const tokens = this.generateTokens(user.id);
-      logger.info(`User registered successfully: ${user.id}`);
-      return { user, tokens };
-    } catch (error) {
-      logger.error('Registration failed:', error);
-      throw error;
-    }
-  }
-
-  async refreshTokens(refreshToken: string): Promise<TokenPair> {
-    try {
-      const decoded = jwt.verify(refreshToken, config.jwt.secret) as { id: string };
-      const userRepository = getRepository(User);
-      const user = await userRepository.findOne({ where: { id: decoded.id } });
-
-      if (!user) {
-        throw new AppError('Invalid refresh token', 401);
-      }
-
-      const tokens = this.generateTokens(user.id);
-      logger.info(`Tokens refreshed for user: ${user.id}`);
-      return tokens;
-    } catch (error) {
-      logger.error('Token refresh failed:', error);
-      throw new AppError('Invalid refresh token', 401);
-    }
-  }
-
-  async validateToken(token: string): Promise<User> {
-    try {
-      const decoded = jwt.verify(token, config.jwt.secret) as { id: string };
-      const userRepository = getRepository(User);
-      const user = await userRepository.findOne({ where: { id: decoded.id } });
-
-      if (!user) {
-        throw new AppError('Invalid token', 401);
-      }
-
-      return user;
-    } catch (error) {
-      logger.error('Token validation failed:', error);
-      throw new AppError('Invalid token', 401);
-    }
-  }
-
-  async changePassword(
-    userId: string,
-    currentPassword: string,
-    newPassword: string,
-  ): Promise<void> {
-    try {
-      const userRepository = getRepository(User);
-      const user = await userRepository.findOne({ where: { id: userId } });
-      if (!user) {
-        throw new AppError('User not found', 404);
-      }
-
-      const isValidPassword = await bcrypt.compare(currentPassword, user.password);
-      if (!isValidPassword) {
-        throw new AppError('Current password is incorrect', 401);
-      }
-
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      user.password = hashedPassword;
-      await userRepository.save(user);
-      logger.info(`Password changed for user: ${userId}`);
-    } catch (error) {
-      logger.error('Password change failed:', error);
-      throw error;
-    }
-  }
-
-  private generateTokens(userId: string): TokenPair {
-    const accessToken = jwt.sign({ id: userId }, config.jwt.secret, {
-      expiresIn: '15m',
+    // Start listening
+    app.listen(port, () => {
+      logger.info(`Identity service listening on port ${port}`);
     });
-
-    const refreshToken = jwt.sign({ id: userId }, config.jwt.secret, {
-      expiresIn: '7d',
-    });
-
-    return { accessToken, refreshToken };
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
   }
 }
 
-export const identityService = new IdentityService();
+async function shutdown(signal: string) {
+  logger.info(`Received ${signal}. Starting graceful shutdown...`);
+  try {
+    if (AppDataSource.isInitialized) {
+      await AppDataSource.destroy();
+      logger.info('Database connection closed');
+    }
+    process.exit(0);
+  } catch (error) {
+    logger.error('Error during shutdown:', error);
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+// Start the server
+startServer();

@@ -1,11 +1,12 @@
-import { Pool, PoolClient, PoolConfig } from 'pg';
+import pkg from 'pg';
+const { Pool } = pkg;
+import type { PoolConfig, Pool as PgPool } from 'pg';
 import { Event, EventStore, EventStoreOptions } from './types.js';
-import { retry } from '../utils/retry.js';
 import { ConcurrencyError } from '../errors/ConcurrencyError.js';
 import { Logger } from 'winston';
 
 export class PostgresEventStore implements EventStore {
-  private pool: Pool;
+  private pool: PgPool;
   private readonly options: Required<EventStoreOptions>;
 
   constructor(
@@ -21,161 +22,218 @@ export class PostgresEventStore implements EventStore {
     };
   }
 
-  async append(events: Event[], expectedVersion?: number): Promise<void> {
+  async initialize(): Promise<void> {
+    try {
+      // Test the connection
+      const client = await this.pool.connect();
+      await client.release();
+      this.logger.info('PostgresEventStore initialized successfully');
+    } catch (error) {
+      this.logger.error('Failed to initialize PostgresEventStore', { error });
+      throw error;
+    }
+  }
+
+  async shutdown(): Promise<void> {
+    try {
+      await this.pool.end();
+      this.logger.info('PostgresEventStore shut down successfully');
+    } catch (error) {
+      this.logger.error('Error shutting down PostgresEventStore', { error });
+      throw error;
+    }
+  }
+
+  async appendToStream(streamId: string, expectedVersion: number, events: Event[]): Promise<void> {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
 
-      if (expectedVersion !== undefined) {
-        await this.checkVersion(client, events[0].aggregateId, expectedVersion);
+      const currentVersionResult = await client.query(
+        'SELECT version FROM event_streams WHERE stream_id = $1 FOR UPDATE',
+        [streamId],
+      );
+
+      let currentVersion = -1;
+      if (currentVersionResult.rows.length > 0) {
+        currentVersion = currentVersionResult.rows[0].version;
       }
 
-      for (const event of events) {
-        await this.appendEvent(client, event);
+      if (currentVersion !== expectedVersion) {
+        throw new ConcurrencyError(`Expected version ${expectedVersion} but got ${currentVersion}`);
+      }
+
+      const newVersion = currentVersion + events.length;
+
+      // Update or insert the stream version
+      await client.query(
+        `
+        INSERT INTO event_streams (stream_id, version)
+        VALUES ($1, $2)
+        ON CONFLICT (stream_id)
+        DO UPDATE SET version = $2
+        `,
+        [streamId, newVersion],
+      );
+
+      // Insert events
+      for (let i = 0; i < events.length; i++) {
+        const event = events[i];
+        const version = currentVersion + i + 1;
+        await client.query(
+          `
+          INSERT INTO events (
+            stream_id,
+            version,
+            type,
+            data,
+            metadata,
+            timestamp
+          ) VALUES ($1, $2, $3, $4, $5, $6)
+          `,
+          [streamId, version, event.type, event.payload, event.metadata, event.metadata?.timestamp],
+        );
       }
 
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
-      if (error instanceof ConcurrencyError) {
-        throw error;
+      throw error;
+    } finally {
+      await client.release();
+    }
+  }
+
+  async append(events: Event[], expectedVersion?: number): Promise<void> {
+    if (events.length === 0) return;
+
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      for (const event of events) {
+        await this.appendToStream(event.aggregateId, expectedVersion ?? -1, [event]);
       }
-      this.logger.error('Failed to append events', { error });
-      throw new Error('Failed to append events');
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
     } finally {
       client.release();
     }
   }
 
-  async getEvents(aggregateId: string, fromVersion?: number): Promise<Event[]> {
-    const query = `
-      SELECT * FROM events
-      WHERE aggregate_id = $1
-      ${fromVersion ? 'AND version > $2' : ''}
-      ORDER BY version ASC
-    `;
-    const values = fromVersion ? [aggregateId, fromVersion] : [aggregateId];
-
-    return retry(
-      async () => {
-        const { rows } = await this.pool.query(query, values);
-        return rows.map(this.mapEventFromDb);
-      },
-      this.options.retryAttempts,
-      this.options.retryDelay,
-    );
-  }
-
-  async getAllEvents(fromPosition?: number): Promise<Event[]> {
-    const query = `
-      SELECT * FROM events
-      ${fromPosition ? 'WHERE position > $1' : ''}
-      ORDER BY position ASC
-      LIMIT $${fromPosition ? '2' : '1'}
-    `;
-    const values = fromPosition ? [fromPosition, this.options.batchSize] : [this.options.batchSize];
-
-    return retry(
-      async () => {
-        const { rows } = await this.pool.query(query, values);
-        return rows.map(this.mapEventFromDb);
-      },
-      this.options.retryAttempts,
-      this.options.retryDelay,
-    );
-  }
-
-  async getEventsByType(eventType: string, fromPosition?: number): Promise<Event[]> {
-    const query = `
-      SELECT * FROM events
-      WHERE type = $1
-      ${fromPosition ? 'AND position > $2' : ''}
-      ORDER BY position ASC
-      LIMIT $${fromPosition ? '3' : '2'}
-    `;
-    const values = fromPosition
-      ? [eventType, fromPosition, this.options.batchSize]
-      : [eventType, this.options.batchSize];
-
-    return retry(
-      async () => {
-        const { rows } = await this.pool.query(query, values);
-        return rows.map(this.mapEventFromDb);
-      },
-      this.options.retryAttempts,
-      this.options.retryDelay,
-    );
-  }
-
-  async getLastPosition(): Promise<number> {
-    const query = 'SELECT MAX(position) as last_position FROM events';
-    const { rows } = await this.pool.query(query);
-    return rows[0].last_position || 0;
-  }
-
-  private async checkVersion(
-    client: PoolClient,
-    aggregateId: string,
-    expectedVersion: number,
-  ): Promise<void> {
-    const query = `
-      SELECT MAX(version) as current_version
-      FROM events
-      WHERE aggregate_id = $1
-    `;
-    const { rows } = await client.query(query, [aggregateId]);
-    const currentVersion = rows[0].current_version || 0;
-
-    if (currentVersion !== expectedVersion) {
-      throw new ConcurrencyError(
-        `Expected version ${expectedVersion}, but current version is ${currentVersion}`,
-      );
+  async getEvents(aggregateId: string, fromVersion = 0): Promise<Event[]> {
+    const client = await this.pool.connect();
+    try {
+      const query = `
+        SELECT * FROM events 
+        WHERE aggregate_id = $1 AND version >= $2 
+        ORDER BY version ASC
+      `;
+      const result = await client.query(query, [aggregateId, fromVersion]);
+      return result.rows;
+    } finally {
+      client.release();
     }
   }
 
-  private async appendEvent(client: PoolClient, event: Event): Promise<void> {
-    const query = `
-      INSERT INTO events (
-        id,
-        type,
-        aggregate_id,
-        aggregate_type,
-        version,
-        payload,
-        metadata,
-        timestamp
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING position
-    `;
-
-    const values = [
-      event.id,
-      event.type,
-      event.aggregateId,
-      event.aggregateType,
-      event.metadata.version,
-      event.payload,
-      event.metadata,
-      event.metadata.timestamp,
-    ];
-
-    const { rows } = await client.query(query, values);
-    event.position = rows[0].position;
+  async getAllEvents(fromPosition = 0): Promise<Event[]> {
+    const client = await this.pool.connect();
+    try {
+      const query = `
+        SELECT * FROM events 
+        WHERE position >= $1 
+        ORDER BY position ASC
+      `;
+      const result = await client.query(query, [fromPosition]);
+      return result.rows;
+    } finally {
+      client.release();
+    }
   }
 
-  private mapEventFromDb(row: any): Event {
-    return {
+  async getEventsByType(eventType: string, fromPosition = 0): Promise<Event[]> {
+    const client = await this.pool.connect();
+    try {
+      const query = `
+        SELECT * FROM events 
+        WHERE type = $1 AND position >= $2 
+        ORDER BY position ASC
+      `;
+      const result = await client.query(query, [eventType, fromPosition]);
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getLastPosition(): Promise<number> {
+    const client = await this.pool.connect();
+    try {
+      const query = `
+        SELECT COALESCE(MAX(position), 0) as last_position 
+        FROM events
+      `;
+      const result = await client.query(query);
+      return result.rows[0].last_position;
+    } finally {
+      client.release();
+    }
+  }
+
+  async readFromStream(
+    streamId: string,
+    fromVersion?: number,
+    toVersion?: number,
+  ): Promise<Event[]> {
+    let query = 'SELECT * FROM events WHERE stream_id = $1';
+    const params: any[] = [streamId];
+
+    if (fromVersion !== undefined) {
+      query += ' AND version >= $2';
+      params.push(fromVersion);
+    }
+
+    if (toVersion !== undefined) {
+      query += ` AND version <= $${params.length + 1}`;
+      params.push(toVersion);
+    }
+
+    query += ' ORDER BY version ASC';
+
+    const result = await this.pool.query(query, params);
+    return result.rows.map(row => ({
       id: row.id,
+      streamId: row.stream_id,
+      version: row.version,
       type: row.type,
-      aggregateId: row.aggregate_id,
-      aggregateType: row.aggregate_type,
+      data: row.data,
       metadata: row.metadata,
-      payload: row.payload,
-      position: row.position,
-    };
+      timestamp: row.timestamp,
+    }));
   }
 
-  async close(): Promise<void> {
-    await this.pool.end();
+  async readAllEvents(
+    fromPosition?: number,
+    batchSize: number = this.options.batchSize,
+  ): Promise<Event[]> {
+    const query = fromPosition
+      ? 'SELECT * FROM events WHERE id > $1 ORDER BY id ASC LIMIT $2'
+      : 'SELECT * FROM events ORDER BY id ASC LIMIT $1';
+
+    const params = fromPosition ? [fromPosition, batchSize] : [batchSize];
+
+    const result = await this.pool.query(query, params);
+    return result.rows.map(row => ({
+      id: row.id,
+      streamId: row.stream_id,
+      version: row.version,
+      type: row.type,
+      data: row.data,
+      metadata: row.metadata,
+      timestamp: row.timestamp,
+    }));
   }
 }

@@ -3,7 +3,6 @@ import { Project, ProjectStatus } from '../../models/Project.js';
 import { ProjectRepository } from '../../config/database.js';
 import logger from '../../utils/logger.js';
 
-
 export interface CreateProjectInput {
   name: string;
   description: string;

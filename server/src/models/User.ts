@@ -8,7 +8,7 @@ import {
   BeforeInsert,
   BeforeUpdate,
   OneToMany,
-  ManyToMany
+  ManyToMany,
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Project } from './Project.js';
@@ -34,7 +34,7 @@ export enum UserProvider {
   LOCAL = 'local',
   GOOGLE = 'google',
   GITHUB = 'github',
-  MICROSOFT = 'microsoft'
+  MICROSOFT = 'microsoft',
 }
 
 @Entity('users')
@@ -216,7 +216,7 @@ export class User {
   removeCollaboratedProject(projectId: string): void {
     if (this.collaboratedProjects) {
       this.collaboratedProjects = this.collaboratedProjects.filter(
-        project => project.id !== projectId
+        project => project.id !== projectId,
       );
     }
   }

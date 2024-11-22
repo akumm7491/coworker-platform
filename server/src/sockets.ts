@@ -2,7 +2,6 @@ import { Server as SocketServer } from 'socket.io';
 import { Server } from 'http';
 import logger from './utils/logger.js';
 
-
 export function initializeSocketServer(server: Server): SocketServer {
   const io = new SocketServer(server, {
     cors: {

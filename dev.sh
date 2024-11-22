@@ -54,8 +54,14 @@ start_dev() {
     docker compose -f docker-compose.dev.yml up -d
     print_status "Development environment started!"
     print_status "Frontend: http://localhost:3456"
-    print_status "Backend:  http://localhost:3457"
-    print_status "MongoDB:  mongodb://localhost:27017"
+    print_status "API Gateway: http://localhost:3450"
+    print_status "Identity Service: http://localhost:3451"
+    print_status "Agent Service: http://localhost:3452"
+    print_status "Monitoring Service: http://localhost:3453"
+    print_status "Collaboration Service: http://localhost:3454"
+    print_status "PostgreSQL: postgresql://localhost:5433"
+    print_status "Redis: redis://localhost:6379"
+    print_status "Kafka: localhost:9092"
 }
 
 # Stop development environment
@@ -82,7 +88,16 @@ show_status() {
 # Rebuild services
 rebuild_services() {
     print_status "Rebuilding services..."
-    docker compose -f docker-compose.dev.yml build
+    # First, rebuild all the services
+    docker compose -f docker-compose.dev.yml build \
+        frontend \
+        api-gateway \
+        identity-service \
+        agent-service \
+        monitoring-service \
+        collaboration-service
+
+    # Then start everything including dependencies
     docker compose -f docker-compose.dev.yml up -d
 }
 
@@ -100,27 +115,21 @@ clean_env() {
 # Open shell in container
 open_shell() {
     if [ -z "$1" ]; then
-        print_error "Please specify a service (frontend, backend, mongodb)"
+        print_error "Please specify a service name"
+        echo "Available services:"
+        docker compose -f docker-compose.dev.yml ps --services
         exit 1
     fi
-    
+
     if ! docker compose -f docker-compose.dev.yml ps --services | grep -q "^$1$"; then
-        print_error "Service $1 is not running"
+        print_error "Service '$1' not found"
+        echo "Available services:"
+        docker compose -f docker-compose.dev.yml ps --services
         exit 1
     fi
-    
-    case $1 in
-        frontend|backend)
-            docker compose -f docker-compose.dev.yml exec $1 sh
-            ;;
-        mongodb)
-            docker compose -f docker-compose.dev.yml exec $1 mongosh
-            ;;
-        *)
-            print_error "Unknown service: $1"
-            exit 1
-            ;;
-    esac
+
+    print_status "Opening shell in $1 container..."
+    docker compose -f docker-compose.dev.yml exec "$1" sh
 }
 
 # Main script
@@ -138,7 +147,8 @@ case $1 in
         start_dev
         ;;
     logs)
-        show_logs $2
+        shift
+        show_logs "$@"
         ;;
     status)
         show_status
@@ -150,7 +160,8 @@ case $1 in
         clean_env
         ;;
     shell)
-        open_shell $2
+        shift
+        open_shell "$1"
         ;;
     *)
         show_usage

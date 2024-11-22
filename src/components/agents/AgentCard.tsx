@@ -17,7 +17,7 @@ interface AgentCardProps {
   onAssignTask: (agentId: string) => void;
 }
 
-const agentTypeIcons: Record<Agent['type'], React.ComponentType<any>> = {
+const agentTypeIcons: Record<Agent['type'], React.ComponentType<{ className?: string }>> = {
   director: RocketLaunchIcon,
   architect: BeakerIcon,
   developer: CommandLineIcon,

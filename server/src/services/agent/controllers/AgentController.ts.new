@@ -1,0 +1,220 @@
+import { Service } from 'typedi';
+import { Router, Request, Response, NextFunction } from 'express';
+import { Logger } from 'winston';
+import logger from '../../../utils/logger.js';
+import { AgentService } from '../AgentService.js';
+import { TaskExecutorService } from '../executor/TaskExecutorService.js';
+import { AgentManagerService } from '../manager/AgentManagerService.js';
+import { CollaborationService } from '../collaboration/CollaborationService.js';
+import { BaseController } from '../../shared/base/BaseController.js';
+
+@Service()
+export class AgentController extends BaseController {
+  private readonly logger: Logger = logger;
+  private readonly agentService: AgentService;
+  private readonly taskExecutor: TaskExecutorService;
+  private readonly agentManager: AgentManagerService;
+  private readonly collaboration: CollaborationService;
+  public readonly router: Router;
+
+  constructor() {
+    super();
+    this.router = Router();
+    this.agentService = AgentService.getInstance();
+    this.taskExecutor = TaskExecutorService.getInstance();
+    this.agentManager = AgentManagerService.getInstance();
+    this.collaboration = CollaborationService.getInstance();
+    this.setupRoutes();
+  }
+
+  private setupRoutes(): void {
+    // Agent management routes
+    this.router.post('/agents', this.createAgent.bind(this));
+    this.router.get('/agents', this.getAllAgents.bind(this));
+    this.router.get('/agents/:id', this.getAgentById.bind(this));
+    this.router.put('/agents/:id', this.updateAgent.bind(this));
+    this.router.delete('/agents/:id', this.deleteAgent.bind(this));
+
+    // Task management routes
+    this.router.post('/tasks', this.createTask.bind(this));
+    this.router.get('/tasks', this.getAllTasks.bind(this));
+    this.router.get('/tasks/:id', this.getTaskById.bind(this));
+    this.router.put('/tasks/:id', this.updateTask.bind(this));
+    this.router.delete('/tasks/:id', this.deleteTask.bind(this));
+
+    // Task execution routes
+    this.router.post('/tasks/:id/execute', this.executeTask.bind(this));
+    this.router.post('/tasks/:id/cancel', this.cancelTask.bind(this));
+    this.router.get('/tasks/:id/status', this.getTaskStatus.bind(this));
+
+    // Collaboration routes
+    this.router.post('/collaborate', this.startCollaboration.bind(this));
+    this.router.post('/collaborate/:sessionId/end', this.endCollaboration.bind(this));
+    this.router.post('/collaborate/:sessionId/transfer', this.transferKnowledge.bind(this));
+  }
+
+  private async createAgent(req: Request, res: Response): Promise<void> {
+    try {
+      const agent = await this.agentService.create(req.body);
+      res.status(201).json(agent);
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async getAllAgents(req: Request, res: Response): Promise<void> {
+    try {
+      const agents = await this.agentService.findAll();
+      res.json(agents);
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async getAgentById(req: Request, res: Response): Promise<void> {
+    try {
+      const agent = await this.agentService.findById(req.params.id);
+      if (!agent) {
+        res.status(404).json({ message: 'Agent not found' });
+        return;
+      }
+      res.json(agent);
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async updateAgent(req: Request, res: Response): Promise<void> {
+    try {
+      const agent = await this.agentService.update(req.params.id, req.body);
+      res.json(agent);
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async deleteAgent(req: Request, res: Response): Promise<void> {
+    try {
+      await this.agentService.delete(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async createTask(req: Request, res: Response): Promise<void> {
+    try {
+      const task = await this.taskExecutor.createTask(req.body);
+      res.status(201).json(task);
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async getAllTasks(req: Request, res: Response): Promise<void> {
+    try {
+      const tasks = await this.taskExecutor.findAll();
+      res.json(tasks);
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async getTaskById(req: Request, res: Response): Promise<void> {
+    try {
+      const task = await this.taskExecutor.findById(req.params.id);
+      if (!task) {
+        res.status(404).json({ message: 'Task not found' });
+        return;
+      }
+      res.json(task);
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async updateTask(req: Request, res: Response): Promise<void> {
+    try {
+      const task = await this.taskExecutor.update(req.params.id, req.body);
+      res.json(task);
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async deleteTask(req: Request, res: Response): Promise<void> {
+    try {
+      await this.taskExecutor.delete(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async executeTask(req: Request, res: Response): Promise<void> {
+    try {
+      const execution = await this.taskExecutor.queueTask(req.params.id);
+      res.status(202).json(execution);
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async cancelTask(req: Request, res: Response): Promise<void> {
+    try {
+      await this.taskExecutor.cancelTask(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async getTaskStatus(req: Request, res: Response): Promise<void> {
+    try {
+      const status = await this.taskExecutor.getTaskStatus(req.params.id);
+      res.json(status);
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async startCollaboration(req: Request, res: Response): Promise<void> {
+    try {
+      const session = await this.collaboration.startSession(req.body.agents);
+      res.status(201).json(session);
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async endCollaboration(req: Request, res: Response): Promise<void> {
+    try {
+      await this.collaboration.endSession(req.params.sessionId);
+      res.status(204).send();
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  private async transferKnowledge(req: Request, res: Response): Promise<void> {
+    try {
+      const transfer = await this.collaboration.transferKnowledge(
+        req.params.sessionId,
+        req.body.sourceAgent,
+        req.body.targetAgent,
+        req.body.knowledge,
+      );
+      res.status(201).json(transfer);
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  }
+
+  protected handleError(error: Error, res: Response): void {
+    this.logger.error('Controller error:', error);
+    res.status(500).json({
+      message: 'Internal server error',
+      error: error.message,
+    });
+  }
+}

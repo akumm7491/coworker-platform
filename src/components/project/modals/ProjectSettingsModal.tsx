@@ -60,11 +60,7 @@ const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettingsModal
     setFormData(prev => ({ ...prev, tags }));
   };
 
-  const handleSettingChange = (
-    section: string,
-    setting: string,
-    value: boolean | string
-  ) => {
+  const handleSettingChange = (section: string, setting: string, value: boolean | string) => {
     setFormData(prev => ({
       ...prev,
       settings: {
@@ -156,7 +152,10 @@ const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettingsModal
                           />
                         </div>
                         <div>
-                          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                          <label
+                            htmlFor="description"
+                            className="block text-sm font-medium text-gray-700"
+                          >
                             Description
                           </label>
                           <textarea
@@ -169,7 +168,10 @@ const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettingsModal
                           />
                         </div>
                         <div>
-                          <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                          <label
+                            htmlFor="status"
+                            className="block text-sm font-medium text-gray-700"
+                          >
                             Status
                           </label>
                           <select
@@ -207,7 +209,7 @@ const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettingsModal
                                 type="checkbox"
                                 id="email-notifications"
                                 checked={formData.settings.notifications.email}
-                                onChange={(e) =>
+                                onChange={e =>
                                   handleSettingChange('notifications', 'email', e.target.checked)
                                 }
                                 className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
@@ -224,7 +226,7 @@ const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettingsModal
                                 type="checkbox"
                                 id="slack-notifications"
                                 checked={formData.settings.notifications.slack}
-                                onChange={(e) =>
+                                onChange={e =>
                                   handleSettingChange('notifications', 'slack', e.target.checked)
                                 }
                                 className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
@@ -244,7 +246,7 @@ const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettingsModal
                           <div className="mt-2">
                             <select
                               value={formData.settings.privacy}
-                              onChange={(e) => handleSettingChange('privacy', '', e.target.value)}
+                              onChange={e => handleSettingChange('privacy', '', e.target.value)}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                             >
                               <option value="private">Private</option>
@@ -260,7 +262,7 @@ const ProjectSettingsModal = ({ isOpen, onClose, project }: ProjectSettingsModal
                               type="checkbox"
                               id="auto-assign"
                               checked={formData.settings.autoAssign}
-                              onChange={(e) =>
+                              onChange={e =>
                                 handleSettingChange('autoAssign', '', e.target.checked)
                               }
                               className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"

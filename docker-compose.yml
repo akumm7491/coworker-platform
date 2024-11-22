@@ -50,6 +50,27 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  identity-service:
+    build:
+      context: .
+      dockerfile: server/src/services/identity/Dockerfile.dev
+    ports:
+      - "3451:3451"
+    environment:
+      - NODE_ENV=development
+      - PORT=3451
+      - POSTGRES_URL=postgres://postgres:postgres@postgres:5432/coworker
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_EXPIRES_IN=30d
+    volumes:
+      - ./server/src:/app/server/src
+    networks:
+      - app-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   mongodb:
     image: mongo:latest
     ports:

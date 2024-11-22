@@ -1,7 +1,6 @@
 import { Client } from 'pg';
 import logger from '../utils/logger.js';
 
-
 async function connectToDatabase(): Promise<Client> {
   const client = new Client({
     connectionString: process.env.POSTGRES_URL,

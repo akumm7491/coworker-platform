@@ -14,10 +14,10 @@ interface NewIntegrationModalProps {
 
 const NewIntegrationModal = ({ isOpen, onClose, projectId }: NewIntegrationModalProps) => {
   const dispatch = useDispatch<AppDispatch>();
-  const project = useSelector((state: RootState) => 
+  const project = useSelector((state: RootState) =>
     state.projects.projects.find(p => p.id === projectId)
   );
-  
+
   const [formData, setFormData] = useState({
     name: '',
     type: 'github',
@@ -55,7 +55,7 @@ const NewIntegrationModal = ({ isOpen, onClose, projectId }: NewIntegrationModal
                 type="text"
                 id="repo-url"
                 value={formData.config['repo-url'] || ''}
-                onChange={(e) => handleConfigChange('repo-url', e.target.value)}
+                onChange={e => handleConfigChange('repo-url', e.target.value)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               />
             </div>
@@ -67,7 +67,7 @@ const NewIntegrationModal = ({ isOpen, onClose, projectId }: NewIntegrationModal
                 type="password"
                 id="access-token"
                 value={formData.config['access-token'] || ''}
-                onChange={(e) => handleConfigChange('access-token', e.target.value)}
+                onChange={e => handleConfigChange('access-token', e.target.value)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               />
             </div>
@@ -84,7 +84,7 @@ const NewIntegrationModal = ({ isOpen, onClose, projectId }: NewIntegrationModal
                 type="text"
                 id="jira-url"
                 value={formData.config['jira-url'] || ''}
-                onChange={(e) => handleConfigChange('jira-url', e.target.value)}
+                onChange={e => handleConfigChange('jira-url', e.target.value)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               />
             </div>
@@ -96,7 +96,7 @@ const NewIntegrationModal = ({ isOpen, onClose, projectId }: NewIntegrationModal
                 type="password"
                 id="api-token"
                 value={formData.config['api-token'] || ''}
-                onChange={(e) => handleConfigChange('api-token', e.target.value)}
+                onChange={e => handleConfigChange('api-token', e.target.value)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               />
             </div>
@@ -108,7 +108,7 @@ const NewIntegrationModal = ({ isOpen, onClose, projectId }: NewIntegrationModal
                 type="text"
                 id="project-key"
                 value={formData.config['project-key'] || ''}
-                onChange={(e) => handleConfigChange('project-key', e.target.value)}
+                onChange={e => handleConfigChange('project-key', e.target.value)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               />
             </div>
@@ -125,7 +125,7 @@ const NewIntegrationModal = ({ isOpen, onClose, projectId }: NewIntegrationModal
                 type="text"
                 id="webhook-url"
                 value={formData.config['webhook-url'] || ''}
-                onChange={(e) => handleConfigChange('webhook-url', e.target.value)}
+                onChange={e => handleConfigChange('webhook-url', e.target.value)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               />
             </div>
@@ -137,7 +137,7 @@ const NewIntegrationModal = ({ isOpen, onClose, projectId }: NewIntegrationModal
                 type="text"
                 id="channel"
                 value={formData.config['channel'] || ''}
-                onChange={(e) => handleConfigChange('channel', e.target.value)}
+                onChange={e => handleConfigChange('channel', e.target.value)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               />
             </div>
@@ -224,7 +224,10 @@ const NewIntegrationModal = ({ isOpen, onClose, projectId }: NewIntegrationModal
 
                 <div className="sm:flex sm:items-start">
                   <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                    <Dialog.Title as="h3" className="text-base font-semibold leading-6 text-gray-900">
+                    <Dialog.Title
+                      as="h3"
+                      className="text-base font-semibold leading-6 text-gray-900"
+                    >
                       New Integration
                     </Dialog.Title>
                     <form onSubmit={handleSubmit} className="mt-6 space-y-6">
@@ -259,7 +262,10 @@ const NewIntegrationModal = ({ isOpen, onClose, projectId }: NewIntegrationModal
                         </select>
                       </div>
                       <div>
-                        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                        <label
+                          htmlFor="description"
+                          className="block text-sm font-medium text-gray-700"
+                        >
                           Description
                         </label>
                         <textarea

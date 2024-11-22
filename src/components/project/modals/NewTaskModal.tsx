@@ -101,7 +101,10 @@ const NewTaskModal = ({ isOpen, onClose, projectId }: NewTaskModalProps) => {
                     <div className="mt-2">
                       <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                          <label htmlFor="title" className="block text-sm font-medium text-gray-700">
+                          <label
+                            htmlFor="title"
+                            className="block text-sm font-medium text-gray-700"
+                          >
                             Title
                           </label>
                           <input
@@ -115,7 +118,10 @@ const NewTaskModal = ({ isOpen, onClose, projectId }: NewTaskModalProps) => {
                           />
                         </div>
                         <div>
-                          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                          <label
+                            htmlFor="description"
+                            className="block text-sm font-medium text-gray-700"
+                          >
                             Description
                           </label>
                           <textarea
@@ -128,7 +134,10 @@ const NewTaskModal = ({ isOpen, onClose, projectId }: NewTaskModalProps) => {
                           />
                         </div>
                         <div>
-                          <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                          <label
+                            htmlFor="status"
+                            className="block text-sm font-medium text-gray-700"
+                          >
                             Status
                           </label>
                           <select

@@ -1,12 +1,7 @@
 import React from 'react';
 import { ProjectIntegration } from '@/types/project';
 import { formatDistanceToNow } from 'date-fns';
-import {
-  CodeBracketIcon,
-  CloudIcon,
-  BugAntIcon,
-  Cog6ToothIcon
-} from '@heroicons/react/24/outline';
+import { CodeBracketIcon, CloudIcon, BugAntIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 
 interface IntegrationsListProps {
   integrations: ProjectIntegration[];
@@ -29,9 +24,9 @@ const IntegrationsList: React.FC<IntegrationsListProps> = ({
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {integrations.map((integration) => {
+      {integrations.map(integration => {
         const IconComponent = integrationIcons[integration.type] || Cog6ToothIcon;
-        
+
         return (
           <div
             key={integration.id}
@@ -44,12 +39,8 @@ const IntegrationsList: React.FC<IntegrationsListProps> = ({
                   <IconComponent className="h-6 w-6 text-gray-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-medium text-gray-900 truncate">
-                    {integration.name}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {integration.description}
-                  </p>
+                  <h3 className="text-lg font-medium text-gray-900 truncate">{integration.name}</h3>
+                  <p className="text-sm text-gray-500">{integration.description}</p>
                 </div>
               </div>
 
@@ -63,7 +54,8 @@ const IntegrationsList: React.FC<IntegrationsListProps> = ({
               </div>
 
               <div className="mt-4 text-sm text-gray-500">
-                Last updated {formatDistanceToNow(new Date(integration.updated_at), { addSuffix: true })}
+                Last updated{' '}
+                {formatDistanceToNow(new Date(integration.updated_at), { addSuffix: true })}
               </div>
             </div>
           </div>

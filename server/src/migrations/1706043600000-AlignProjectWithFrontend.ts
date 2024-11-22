@@ -7,7 +7,7 @@ export class AlignProjectWithFrontend1706043600000 implements MigrationInterface
 
     // Create new enum with updated values
     await queryRunner.query(
-      `CREATE TYPE "public"."projects_status_enum" AS ENUM('not_started', 'in_progress', 'completed', 'on_hold')`
+      `CREATE TYPE "public"."projects_status_enum" AS ENUM('not_started', 'in_progress', 'completed', 'on_hold')`,
     );
 
     // Add status column with new enum type
@@ -17,8 +17,12 @@ export class AlignProjectWithFrontend1706043600000 implements MigrationInterface
     `);
 
     // Add new columns
-    await queryRunner.query(`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "agents_assigned" text`);
-    await queryRunner.query(`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "completion" float DEFAULT 0`);
+    await queryRunner.query(
+      `ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "agents_assigned" text`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "completion" float DEFAULT 0`,
+    );
 
     // Drop unused columns
     await queryRunner.query(`ALTER TABLE "projects" DROP COLUMN IF EXISTS "visibility"`);
@@ -40,12 +44,26 @@ export class AlignProjectWithFrontend1706043600000 implements MigrationInterface
     await queryRunner.query(`DROP TYPE IF EXISTS "public"."projects_status_enum" CASCADE`);
 
     // Add back old columns with default values
-    await queryRunner.query(`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "visibility" VARCHAR DEFAULT 'private'`);
-    await queryRunner.query(`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "settings" JSONB DEFAULT '{}'::jsonb`);
-    await queryRunner.query(`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "metadata" JSONB DEFAULT '{}'::jsonb`);
-    await queryRunner.query(`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "agentSettings" JSONB DEFAULT '{}'::jsonb`);
-    await queryRunner.query(`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "environment" JSONB DEFAULT '{}'::jsonb`);
-    await queryRunner.query(`ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "analytics" JSONB DEFAULT '{}'::jsonb`);
-    await queryRunner.query(`ALTER TABLE "projects" ADD COLUMN IF EXISTS "tasks" JSONB DEFAULT '[]'::jsonb`);
+    await queryRunner.query(
+      `ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "visibility" VARCHAR DEFAULT 'private'`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "settings" JSONB DEFAULT '{}'::jsonb`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "metadata" JSONB DEFAULT '{}'::jsonb`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "agentSettings" JSONB DEFAULT '{}'::jsonb`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "environment" JSONB DEFAULT '{}'::jsonb`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "analytics" JSONB DEFAULT '{}'::jsonb`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "projects" ADD COLUMN IF EXISTS "tasks" JSONB DEFAULT '[]'::jsonb`,
+    );
   }
 }

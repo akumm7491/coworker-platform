@@ -3,7 +3,6 @@ import { Dialog, Transition } from '@headlessui/react';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/store';
 import { createAgent } from '@/store/slices/agentsSlice';
-import { Agent } from '@/types';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface NewAgentModalProps {
@@ -35,13 +34,16 @@ const NewAgentModal = ({ isOpen, onClose, projectId }: NewAgentModalProps) => {
 
   const handleCapabilitiesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const items = value.split(',').map(item => item.trim()).filter(item => item);
+    const items = value
+      .split(',')
+      .map(item => item.trim())
+      .filter(item => item);
     setFormData(prev => ({
       ...prev,
       capabilities: {
         ...prev.capabilities,
-        [name === 'skills' ? 'skills' : 'languages']: items
-      }
+        [name === 'skills' ? 'skills' : 'languages']: items,
+      },
     }));
   };
 
@@ -49,7 +51,7 @@ const NewAgentModal = ({ isOpen, onClose, projectId }: NewAgentModalProps) => {
     e.preventDefault();
 
     try {
-      const createdAgent = await dispatch(
+      await dispatch(
         createAgent({
           ...formData,
           status: 'idle',
@@ -115,7 +117,10 @@ const NewAgentModal = ({ isOpen, onClose, projectId }: NewAgentModalProps) => {
 
                 <div className="sm:flex sm:items-start">
                   <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                    <Dialog.Title as="h3" className="text-base font-semibold leading-6 text-gray-900">
+                    <Dialog.Title
+                      as="h3"
+                      className="text-base font-semibold leading-6 text-gray-900"
+                    >
                       New Agent
                     </Dialog.Title>
                     <form onSubmit={handleSubmit} className="mt-6 space-y-6">
@@ -150,7 +155,10 @@ const NewAgentModal = ({ isOpen, onClose, projectId }: NewAgentModalProps) => {
                         </select>
                       </div>
                       <div>
-                        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                        <label
+                          htmlFor="description"
+                          className="block text-sm font-medium text-gray-700"
+                        >
                           Description
                         </label>
                         <textarea
@@ -176,7 +184,10 @@ const NewAgentModal = ({ isOpen, onClose, projectId }: NewAgentModalProps) => {
                         />
                       </div>
                       <div>
-                        <label htmlFor="languages" className="block text-sm font-medium text-gray-700">
+                        <label
+                          htmlFor="languages"
+                          className="block text-sm font-medium text-gray-700"
+                        >
                           Languages (comma-separated)
                         </label>
                         <input
@@ -189,7 +200,10 @@ const NewAgentModal = ({ isOpen, onClose, projectId }: NewAgentModalProps) => {
                         />
                       </div>
                       <div>
-                        <label htmlFor="learningRate" className="block text-sm font-medium text-gray-700">
+                        <label
+                          htmlFor="learningRate"
+                          className="block text-sm font-medium text-gray-700"
+                        >
                           Learning Rate
                         </label>
                         <input
@@ -205,7 +219,10 @@ const NewAgentModal = ({ isOpen, onClose, projectId }: NewAgentModalProps) => {
                         />
                       </div>
                       <div>
-                        <label htmlFor="maxConcurrentTasks" className="block text-sm font-medium text-gray-700">
+                        <label
+                          htmlFor="maxConcurrentTasks"
+                          className="block text-sm font-medium text-gray-700"
+                        >
                           Max Concurrent Tasks
                         </label>
                         <input

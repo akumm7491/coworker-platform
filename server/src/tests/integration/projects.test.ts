@@ -1,11 +1,7 @@
 import { describe, test as it, expect, beforeEach } from '@jest/globals';
 import request from 'supertest';
 import app from '../../app';
-import {
-  testProject,
-  expectProject,
-  cleanupDatabase,
-} from '../helpers/testHelper';
+import { testProject, expectProject, cleanupDatabase } from '../helpers/testHelper';
 
 describe('Projects API', () => {
   beforeEach(async () => {
@@ -131,7 +127,9 @@ describe('Projects API', () => {
 
     describe('POST /api/projects/:projectId/tasks', () => {
       it('should create a new task', async () => {
-        const response = await request(app).post(`/api/projects/${projectId}/tasks`).send({ title: 'New Task', description: 'New task description' });
+        const response = await request(app)
+          .post(`/api/projects/${projectId}/tasks`)
+          .send({ title: 'New Task', description: 'New task description' });
 
         expect(response.status).toBe(201);
         expect(response.body.title).toBe('New Task');

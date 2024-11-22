@@ -1,7 +1,7 @@
 import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
 import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
-import * as bcrypt from 'bcrypt';  // Using bcrypt consistently
+import * as bcrypt from 'bcrypt'; // Using bcrypt consistently
 import { config } from './env.js';
 import { AppDataSource } from './database.js';
 import { User } from '../models/User.js';
@@ -19,10 +19,10 @@ passport.use(
     async (email, password, done) => {
       try {
         logger.info('Login attempt:', { email });
-        
-        const user = await userRepository.findOne({ 
+
+        const user = await userRepository.findOne({
           where: { email },
-          select: ['id', 'email', 'password', 'name']
+          select: ['id', 'email', 'password', 'name'],
         });
 
         if (!user) {
@@ -31,10 +31,10 @@ passport.use(
         }
 
         logger.info('Found user:', { email, userId: user.id, passwordHash: user.password });
-        
+
         const isMatch = await bcrypt.compare(password, user.password);
         logger.info('Password comparison:', { email, isMatch, inputPassword: password });
-        
+
         if (!isMatch) {
           logger.info('Password mismatch:', { email });
           return done(null, false, { message: 'Invalid credentials' });
@@ -59,9 +59,9 @@ passport.use(
     },
     async (payload, done) => {
       try {
-        const user = await userRepository.findOne({ 
+        const user = await userRepository.findOne({
           where: { id: payload.id },
-          select: ['id', 'email', 'name']
+          select: ['id', 'email', 'name'],
         });
 
         if (!user) {

@@ -32,7 +32,7 @@ const AgentsList: React.FC<AgentsListProps> = ({ agents, onAgentClick }) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {agents.map((agent) => (
+      {agents.map(agent => (
         <div
           key={agent.id}
           className="bg-white rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer"
@@ -49,16 +49,14 @@ const AgentsList: React.FC<AgentsListProps> = ({ agents, onAgentClick }) => {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between">
-                  <h3 className="text-lg font-medium text-gray-900 truncate">
-                    {agent.name}
-                  </h3>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${typeColors[agent.type] || typeColors.custom}`}>
+                  <h3 className="text-lg font-medium text-gray-900 truncate">{agent.name}</h3>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${typeColors[agent.type] || typeColors.custom}`}
+                  >
                     {agent.type}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-gray-500">
-                  {agent.description}
-                </p>
+                <p className="mt-1 text-sm text-gray-500">{agent.description}</p>
               </div>
             </div>
 
@@ -76,7 +74,9 @@ const AgentsList: React.FC<AgentsListProps> = ({ agents, onAgentClick }) => {
             </div>
 
             <div className="mt-4 flex justify-between items-center">
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[agent.status]}`}>
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[agent.status]}`}
+              >
                 {agent.status}
               </span>
               <div className="flex space-x-2">

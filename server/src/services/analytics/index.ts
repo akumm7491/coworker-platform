@@ -1,7 +1,6 @@
 import { Kafka, Producer, Consumer, EachMessagePayload } from 'kafkajs';
 import logger from '../../utils/logger.js';
 
-
 interface AnalyticsEvent {
   type: string;
   timestamp: number;

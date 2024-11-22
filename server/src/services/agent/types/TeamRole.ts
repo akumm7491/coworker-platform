@@ -1,0 +1,6 @@
+export enum TeamRole {
+  ADMIN = 'ADMIN',
+  MEMBER = 'MEMBER',
+  VIEWER = 'VIEWER',
+  COLLABORATOR = 'COLLABORATOR',
+}

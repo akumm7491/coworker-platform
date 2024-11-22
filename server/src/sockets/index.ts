@@ -2,7 +2,6 @@ import { Server as SocketServer } from 'socket.io';
 import { Server } from 'http';
 import logger from '../utils/logger.js';
 
-
 interface SocketData {
   id: string;
   data: unknown;

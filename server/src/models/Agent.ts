@@ -262,12 +262,8 @@ export class Agent {
     }
     const projectMetrics = this.performance.projectMetrics[projectId];
     projectMetrics.tasksCompleted += 1;
-    const projectTasks = this.performance.lastNTasks.filter(
-      task => task.projectId === projectId,
-    );
-    const projectSuccessfulTasks = projectTasks.filter(
-      task => task.status === 'success',
-    ).length;
+    const projectTasks = this.performance.lastNTasks.filter(task => task.projectId === projectId);
+    const projectSuccessfulTasks = projectTasks.filter(task => task.status === 'success').length;
     projectMetrics.successRate = (projectSuccessfulTasks / projectTasks.length) * 100;
     projectMetrics.averageResponseTime =
       (projectMetrics.averageResponseTime * (projectTasks.length - 1) + duration) /

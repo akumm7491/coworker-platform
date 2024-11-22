@@ -1,24 +1,41 @@
 import { Logger } from 'winston';
-import { TaskResult } from './types.js';
+
+export type TaskStatus = 'SUCCESS' | 'FAILURE';
 
 export interface TaskHandler {
   execute(parameters: Record<string, unknown>): Promise<unknown>;
 }
 
+export interface TaskResult {
+  result?: unknown;
+  status: TaskStatus;
+  error?: string;
+}
+
 export class AgentTaskExecutor {
   private taskHandlers: Map<string, TaskHandler>;
-  private runningTasks: Map<string, Promise<unknown>>;
-  private taskResults: Map<string, TaskResult>;
+  private runningTasks: Map<
+    string,
+    {
+      promise: Promise<unknown>;
+      cancel?: () => void;
+      startTime: number;
+    }
+  >;
+  private readonly defaultTimeout: number;
 
-  constructor(private readonly logger: Logger) {
+  constructor(
+    private readonly logger: Logger,
+    config?: { defaultTimeout?: number },
+  ) {
     this.taskHandlers = new Map();
     this.runningTasks = new Map();
-    this.taskResults = new Map();
+    this.defaultTimeout = config?.defaultTimeout ?? 300000; // Default 5 minutes
   }
 
   registerTaskHandler(taskType: string, handler: TaskHandler): void {
     if (this.taskHandlers.has(taskType)) {
-      throw new Error(`Handler already registered for task type: ${taskType}`);
+      throw new Error(`Task handler for type ${taskType} is already registered`);
     }
     this.taskHandlers.set(taskType, handler);
     this.logger.info('Registered task handler', { taskType });
@@ -28,60 +45,98 @@ export class AgentTaskExecutor {
     taskId: string,
     taskType: string,
     parameters: Record<string, unknown>,
+    timeout?: number,
   ): Promise<void> {
     const handler = this.taskHandlers.get(taskType);
     if (!handler) {
-      throw new Error(`No handler registered for task type: ${taskType}`);
+      throw new Error(`No handler registered for task type ${taskType}`);
     }
 
-    this.logger.info('Starting task execution', { taskId, taskType });
+    let cancel: (() => void) | undefined;
+    const taskPromise = new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error(`Task ${taskId} timed out after ${timeout ?? this.defaultTimeout}ms`));
+      }, timeout ?? this.defaultTimeout);
 
-    const taskPromise = handler
-      .execute(parameters)
-      .then(result => {
-        const taskResult: TaskResult = {
-          taskId,
-          result,
-          status: 'SUCCESS' as const,
-        };
-        this.taskResults.set(taskId, taskResult);
-        this.logger.info('Task completed successfully', { taskId, taskType });
-      })
-      .catch(error => {
-        const taskResult: TaskResult = {
-          taskId,
-          result: null,
-          status: 'FAILURE' as const,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        };
-        this.taskResults.set(taskId, taskResult);
-        this.logger.error('Task failed', {
-          taskId,
-          taskType,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-      })
-      .finally(() => {
-        this.runningTasks.delete(taskId);
-      });
+      cancel = () => {
+        clearTimeout(timeoutId);
+        reject(new Error(`Task ${taskId} was cancelled`));
+      };
 
-    this.runningTasks.set(taskId, taskPromise);
+      try {
+        handler
+          .execute(parameters)
+          .then(result => {
+            clearTimeout(timeoutId);
+            resolve(result);
+          })
+          .catch(error => {
+            clearTimeout(timeoutId);
+            reject(error);
+          });
+      } catch (error) {
+        clearTimeout(timeoutId);
+        reject(error);
+      }
+    });
+
+    this.runningTasks.set(taskId, {
+      promise: taskPromise,
+      cancel,
+      startTime: Date.now(),
+    });
+
+    try {
+      await taskPromise;
+    } finally {
+      this.runningTasks.delete(taskId);
+    }
   }
 
   async checkTaskStatus(taskId: string): Promise<TaskResult | null> {
-    // If task is still running, return null
-    if (this.runningTasks.has(taskId)) {
+    const task = this.runningTasks.get(taskId);
+    if (!task) {
       return null;
     }
 
-    // If we have a result, return and clear it
-    const result = this.taskResults.get(taskId);
-    if (result) {
-      this.taskResults.delete(taskId);
-      return result;
+    try {
+      const result = await Promise.race([
+        task.promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Task status check timed out')), 5000),
+        ),
+      ]);
+
+      return {
+        result,
+        status: 'SUCCESS' as const,
+      };
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : String(error),
+        status: 'FAILURE' as const,
+      };
+    }
+  }
+
+  cancelTask(taskId: string): void {
+    const task = this.runningTasks.get(taskId);
+    if (!task) {
+      this.logger.warn(`Attempted to cancel non-existent task ${taskId}`);
+      return;
     }
 
-    return null;
+    task.cancel?.();
+    this.runningTasks.delete(taskId);
+    this.logger.info(`Task ${taskId} cancelled`);
+  }
+
+  getRunningTasks(): { taskId: string; startTime: number; runtime: number }[] {
+    return Array.from(this.runningTasks.entries()).map(([taskId, task]) => ({
+      taskId,
+      startTime: task.startTime,
+      runtime: Date.now() - task.startTime,
+    }));
   }
 
   getRegisteredTaskTypes(): string[] {
