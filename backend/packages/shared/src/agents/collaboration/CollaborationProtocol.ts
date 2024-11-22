@@ -22,6 +22,7 @@ export interface CollaborationSession {
   startTime: Date;
   endTime?: Date;
   outcome?: Record<string, unknown>;
+  context?: Record<string, unknown>;
 }
 
 export abstract class CollaborationProtocol {

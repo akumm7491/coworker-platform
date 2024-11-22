@@ -1,4 +1,4 @@
-import { Task } from '@coworker/shared/dist/database/entities/Task';
+import { Task } from '../domain/planning/entities/task.entity';
 import { Agent } from '@coworker/shared/dist/database/entities/Agent';
 import {
   TaskPlanner,
@@ -20,33 +20,59 @@ interface AgentCapabilityScore {
   confidence: number;
 }
 
+interface TaskStep {
+  description: string;
+  dependencies: string[];
+  estimatedDuration: number;
+  requiredCapabilities: string[];
+}
+
 export class AdaptiveTaskPlanner extends TaskPlanner {
   private capabilityScores: Map<string, AgentCapabilityScore[]> = new Map();
   private dependencyGraph: Map<string, TaskDependency[]> = new Map();
+  private status: 'on_track' | 'at_risk' | 'delayed' = 'on_track';
+  private metrics: Record<string, number> = {};
 
   async analyzeDependencies(task: Task): Promise<string[]> {
-    // Analyze task description and requirements to identify dependencies
+    if (!task) {
+      throw new Error('Task cannot be null or undefined');
+    }
+
     const dependencies: string[] = [];
 
-    // Extract explicit dependencies from task metadata
     if (task.metadata?.dependencies) {
       dependencies.push(...(task.metadata.dependencies as string[]));
     }
 
-    // Analyze task description for implicit dependencies
-    // This would involve NLP or pattern matching in a real implementation
-
     return dependencies;
   }
 
-  async createExecutionPlan(task: Task, availableAgents: Agent[]): Promise<ExecutionPlan> {
-    const steps: PlanStep[] = [];
-    const dependencies = await this.analyzeDependencies(task);
+  private async breakdownTask(task: Task): Promise<TaskStep[]> {
+    // This would involve NLP or pattern matching in a real implementation
+    // For now, create a simple single-step breakdown
+    return [
+      {
+        description: task.description || '',
+        dependencies: [],
+        estimatedDuration: 60, // Default 1 hour
+        requiredCapabilities: ['default'],
+      },
+    ];
+  }
 
-    // Break down task into steps
+  async createExecutionPlan(task: Task, availableAgents: Agent[]): Promise<ExecutionPlan> {
+    if (!task) {
+      throw new Error('Task cannot be null or undefined');
+    }
+    if (!availableAgents || availableAgents.length === 0) {
+      throw new Error('No available agents provided');
+    }
+
+    const steps: PlanStep[] = [];
+    await this.analyzeDependencies(task);
+
     const taskSteps = await this.breakdownTask(task);
 
-    // Create plan steps with dependencies
     for (const step of taskSteps) {
       const planStep: PlanStep = {
         id: uuidv4(),
@@ -59,7 +85,6 @@ export class AdaptiveTaskPlanner extends TaskPlanner {
       steps.push(planStep);
     }
 
-    // Identify parallel execution opportunities
     const parallelizableSteps = this.identifyParallelSteps(steps);
 
     const plan: ExecutionPlan = {
@@ -71,7 +96,6 @@ export class AdaptiveTaskPlanner extends TaskPlanner {
       status: 'planning',
     };
 
-    // Optimize and assign agents
     const optimizedPlan = await this.optimizePlan(plan, {
       maxParallelization: 3,
       prioritizeSpeed: true,
@@ -80,180 +104,86 @@ export class AdaptiveTaskPlanner extends TaskPlanner {
     return await this.assignAgents(optimizedPlan, availableAgents);
   }
 
-  async optimizePlan(
-    plan: ExecutionPlan,
-    constraints: Record<string, unknown>
-  ): Promise<ExecutionPlan> {
-    const optimizedPlan = { ...plan };
-
-    // Optimize step ordering
-    optimizedPlan.steps = this.optimizeStepOrder(plan.steps, constraints);
-
-    // Update parallel execution opportunities
-    optimizedPlan.parallelizableSteps = this.identifyParallelSteps(optimizedPlan.steps);
-
-    // Update estimated completion
-    optimizedPlan.estimatedCompletion = this.calculateEstimatedCompletion(optimizedPlan.steps);
-
-    return optimizedPlan;
-  }
-
-  async assignAgents(plan: ExecutionPlan, availableAgents: Agent[]): Promise<ExecutionPlan> {
-    const updatedPlan = { ...plan };
-
-    // Calculate capability scores for each agent-step combination
-    const agentScores = await this.calculateAgentCapabilityScores(plan.steps, availableAgents);
-
-    // Assign agents to steps based on scores and constraints
-    for (const step of updatedPlan.steps) {
-      const bestAgent = this.findBestAgentForStep(step, availableAgents, agentScores);
-      if (bestAgent) {
-        step.assignedAgent = bestAgent.id;
-      }
-    }
-
-    return updatedPlan;
-  }
-
-  async monitorExecution(plan: ExecutionPlan): Promise<{
-    status: 'on_track' | 'at_risk' | 'delayed';
-    metrics: Record<string, number>;
-    recommendations?: Record<string, unknown>;
-  }> {
-    const completedSteps = plan.steps.filter(s => s.status === 'completed');
-    const failedSteps = plan.steps.filter(s => s.status === 'failed');
-    const inProgressSteps = plan.steps.filter(s => s.status === 'in_progress');
-
-    // Calculate progress metrics
-    const progress = completedSteps.length / plan.steps.length;
-    const failureRate = failedSteps.length / plan.steps.length;
-    const actualDuration = this.calculateActualDuration(plan);
-    const estimatedDuration = this.calculateEstimatedDuration(plan);
-    const timeDeviation = actualDuration / estimatedDuration;
-
-    // Determine status
-    let status: 'on_track' | 'at_risk' | 'delayed';
-    if (failureRate > 0.2) {
-      status = 'at_risk';
-    } else if (timeDeviation > 1.2) {
-      status = 'delayed';
-    } else {
-      status = 'on_track';
-    }
-
-    // Generate recommendations if needed
-    const recommendations = status !== 'on_track' ? this.generateRecommendations(plan) : undefined;
-
-    return {
-      status,
-      metrics: {
-        progress,
-        failureRate,
-        timeDeviation,
-        completedSteps: completedSteps.length,
-        remainingSteps: plan.steps.length - completedSteps.length,
-      },
-      recommendations,
-    };
-  }
-
-  async handleFailure(
-    plan: ExecutionPlan,
-    failedStep: PlanStep,
-    error: Error
-  ): Promise<{
-    updatedPlan: ExecutionPlan;
-    recoveryActions: Record<string, unknown>[];
-  }> {
-    // Analyze failure impact
-    const impactedSteps = this.findImpactedSteps(plan, failedStep);
-
-    // Generate recovery plan
-    const recoveryPlan = await this.generateRecoveryPlan(plan, failedStep, impactedSteps, error);
-
-    // Update plan with recovery steps
-    const updatedPlan = this.incorporateRecoveryPlan(plan, recoveryPlan);
-
-    return {
-      updatedPlan,
-      recoveryActions: recoveryPlan.actions,
-    };
-  }
-
-  async evaluatePerformance(plan: ExecutionPlan): Promise<{
-    metrics: Record<string, number>;
-    learningPoints: Record<string, unknown>[];
-    recommendations: string[];
-  }> {
-    const metrics = {
-      completionRate: this.calculateCompletionRate(plan),
-      efficiency: this.calculateEfficiency(plan),
-      agentPerformance: this.calculateAgentPerformance(plan),
-      planAccuracy: this.calculatePlanAccuracy(plan),
-    };
-
-    const learningPoints = this.extractLearningPoints(plan);
-    const recommendations = this.generatePerformanceRecommendations(metrics, learningPoints);
-
-    return {
-      metrics,
-      learningPoints,
-      recommendations,
-    };
-  }
-
-  private async breakdownTask(task: Task): Promise<
-    {
-      description: string;
-      dependencies: string[];
-      estimatedDuration: number;
-      requiredCapabilities: string[];
-    }[]
-  > {
-    // Implementation would involve task analysis and breakdown
-    return [];
-  }
-
   private identifyParallelSteps(steps: PlanStep[]): string[][] {
     const parallelGroups: string[][] = [];
-    const dependencyMap = new Map<string, Set<string>>();
+    const visited = new Set<string>();
 
-    // Build dependency map
-    steps.forEach(step => {
-      dependencyMap.set(step.id, new Set(step.dependencies));
-    });
+    for (const step of steps) {
+      if (visited.has(step.id)) continue;
 
-    // Group independent steps
-    const remainingSteps = new Set(steps.map(s => s.id));
-    while (remainingSteps.size > 0) {
-      const parallelGroup: string[] = [];
+      const group: string[] = [step.id];
+      visited.add(step.id);
 
-      for (const stepId of remainingSteps) {
-        const deps = dependencyMap.get(stepId) || new Set();
-        if ([...deps].every(d => !remainingSteps.has(d))) {
-          parallelGroup.push(stepId);
+      // Find other steps that can run in parallel with this step
+      for (const otherStep of steps) {
+        if (visited.has(otherStep.id)) continue;
+        if (this.canRunInParallel(step, otherStep, steps)) {
+          group.push(otherStep.id);
+          visited.add(otherStep.id);
         }
       }
 
-      if (parallelGroup.length > 0) {
-        parallelGroups.push(parallelGroup);
-        parallelGroup.forEach(id => remainingSteps.delete(id));
-      } else {
-        break;
+      if (group.length > 1) {
+        parallelGroups.push(group);
       }
     }
 
     return parallelGroups;
   }
 
-  private calculateEstimatedCompletion(steps: PlanStep[]): Date {
-    const totalDuration = steps.reduce((sum, step) => sum + step.estimatedDuration, 0);
-    return new Date(Date.now() + totalDuration);
+  private canRunInParallel(step1: PlanStep, step2: PlanStep, allSteps: PlanStep[]): boolean {
+    // Check if neither step depends on the other
+    if (step1.dependencies.includes(step2.id) || step2.dependencies.includes(step1.id)) {
+      return false;
+    }
+
+    // Check if they don't share any common dependencies
+    const step1Deps = new Set(this.getAllDependencies(step1, allSteps));
+    const step2Deps = new Set(this.getAllDependencies(step2, allSteps));
+
+    return !Array.from(step1Deps).some(dep => step2Deps.has(dep));
   }
 
-  private optimizeStepOrder(steps: PlanStep[], constraints: Record<string, unknown>): PlanStep[] {
-    // Topological sort with optimization
-    return steps;
+  private getAllDependencies(step: PlanStep, allSteps: PlanStep[]): string[] {
+    const deps = new Set<string>();
+    const visited = new Set<string>();
+
+    const traverse = (stepId: string) => {
+      if (visited.has(stepId)) return;
+      visited.add(stepId);
+
+      const currentStep = allSteps.find(s => s.id === stepId);
+      if (!currentStep) return;
+
+      currentStep.dependencies.forEach(depId => {
+        deps.add(depId);
+        traverse(depId);
+      });
+    };
+
+    traverse(step.id);
+    return Array.from(deps);
+  }
+
+  private calculateEstimatedCompletion(steps: PlanStep[]): Date {
+    const totalDuration = steps.reduce((sum, step) => sum + (step.estimatedDuration || 0), 0);
+    return new Date(Date.now() + totalDuration * 60 * 1000);
+  }
+
+  async optimizePlan(
+    plan: ExecutionPlan,
+    constraints: Record<string, unknown>
+  ): Promise<ExecutionPlan> {
+    if (!plan) {
+      throw new Error('Plan cannot be null or undefined');
+    }
+
+    const optimizedPlan = { ...plan };
+    optimizedPlan.steps = this.optimizeStepOrder(plan.steps, constraints);
+    optimizedPlan.parallelizableSteps = this.identifyParallelSteps(optimizedPlan.steps);
+    optimizedPlan.estimatedCompletion = this.calculateEstimatedCompletion(optimizedPlan.steps);
+
+    return optimizedPlan;
   }
 
   private async calculateAgentCapabilityScores(
@@ -262,20 +192,20 @@ export class AdaptiveTaskPlanner extends TaskPlanner {
   ): Promise<Map<string, AgentCapabilityScore[]>> {
     const scores = new Map<string, AgentCapabilityScore[]>();
 
-    for (const step of steps) {
-      const stepScores: AgentCapabilityScore[] = [];
+    for (const agent of agents) {
+      const agentScores: AgentCapabilityScore[] = [];
 
-      for (const agent of agents) {
+      for (const step of steps) {
         const score = this.calculateAgentStepScore(agent, step);
-        stepScores.push({
+        agentScores.push({
           agentId: agent.id,
           stepId: step.id,
-          score: score.value,
+          score: score.score,
           confidence: score.confidence,
         });
       }
 
-      scores.set(step.id, stepScores);
+      scores.set(agent.id, agentScores);
     }
 
     return scores;
@@ -284,42 +214,49 @@ export class AdaptiveTaskPlanner extends TaskPlanner {
   private calculateAgentStepScore(
     agent: Agent,
     step: PlanStep
-  ): { value: number; confidence: number } {
-    // Calculate score based on capabilities match and past performance
-    return { value: 0, confidence: 0 };
+  ): { score: number; confidence: number } {
+    // Simple scoring based on capability matching
+    const requiredCapabilities = new Set(step.requiredCapabilities || []);
+    const agentCapabilities = new Set(agent.capabilities || []);
+
+    const matchingCapabilities = Array.from(requiredCapabilities).filter(cap =>
+      agentCapabilities.has(cap)
+    ).length;
+
+    const score =
+      requiredCapabilities.size > 0 ? matchingCapabilities / requiredCapabilities.size : 1;
+
+    const confidence = 0.8; // Fixed confidence for now
+
+    return { score, confidence };
   }
 
   private findBestAgentForStep(
     step: PlanStep,
     agents: Agent[],
-    scores: Map<string, AgentCapabilityScore[]>
+    agentScores: Map<string, AgentCapabilityScore[]>
   ): Agent | undefined {
-    const stepScores = scores.get(step.id) || [];
-    if (stepScores.length === 0) return undefined;
+    let bestAgent: Agent | undefined;
+    let bestScore = -1;
 
-    const bestScore = stepScores.reduce((a, b) => (a.score > b.score ? a : b));
+    for (const agent of agents) {
+      const agentStepScores = agentScores.get(agent.id);
+      if (!agentStepScores) continue;
 
-    return agents.find(a => a.id === bestScore.agentId);
-  }
+      const stepScore = agentStepScores.find(score => score.stepId === step.id);
+      if (!stepScore) continue;
 
-  private calculateActualDuration(plan: ExecutionPlan): number {
-    // Calculate actual duration from step timestamps
-    return 0;
-  }
+      if (stepScore.score > bestScore) {
+        bestScore = stepScore.score;
+        bestAgent = agent;
+      }
+    }
 
-  private calculateEstimatedDuration(plan: ExecutionPlan): number {
-    // Calculate estimated duration from step estimates
-    return 0;
-  }
-
-  private generateRecommendations(plan: ExecutionPlan): Record<string, unknown> {
-    // Generate recommendations based on plan status
-    return {};
+    return bestAgent;
   }
 
   private findImpactedSteps(plan: ExecutionPlan, failedStep: PlanStep): PlanStep[] {
-    // Find steps dependent on the failed step
-    return [];
+    return this.findDependents(failedStep.id, plan);
   }
 
   private async generateRecoveryPlan(
@@ -327,45 +264,97 @@ export class AdaptiveTaskPlanner extends TaskPlanner {
     failedStep: PlanStep,
     impactedSteps: PlanStep[],
     error: Error
-  ): Promise<{
-    actions: Record<string, unknown>[];
-  }> {
-    // Generate recovery plan
-    return { actions: [] };
+  ): Promise<{ actions: Record<string, unknown>[] }> {
+    const actions: Record<string, unknown>[] = [];
+
+    // First, try to retry the failed step
+    if ((failedStep.retryCount || 0) < 3) {
+      actions.push({
+        type: 'retry',
+        stepId: failedStep.id,
+      });
+    } else {
+      // If retry limit reached, try reassigning to a different agent
+      actions.push({
+        type: 'reassign',
+        stepId: failedStep.id,
+      });
+
+      // If there are impacted steps, replan them
+      if (impactedSteps.length > 0) {
+        actions.push({
+          type: 'replan',
+          steps: impactedSteps.map(step => step.id),
+        });
+      }
+    }
+
+    return { actions };
   }
 
-  private incorporateRecoveryPlan(
-    plan: ExecutionPlan,
-    recoveryPlan: { actions: Record<string, unknown>[] }
-  ): ExecutionPlan {
-    // Update plan with recovery actions
-    return plan;
+  private calculateActualDuration(plan: ExecutionPlan): number {
+    let totalDuration = 0;
+
+    for (const step of plan.steps) {
+      if (step.startTime && step.endTime) {
+        const duration = new Date(step.endTime).getTime() - new Date(step.startTime).getTime();
+        totalDuration += duration;
+      }
+    }
+
+    return totalDuration / (60 * 1000); // Convert to minutes
+  }
+
+  private calculateEstimatedDuration(plan: ExecutionPlan): number {
+    return plan.steps.reduce((sum, step) => sum + (step.estimatedDuration || 0), 0);
   }
 
   private calculateCompletionRate(plan: ExecutionPlan): number {
-    return 0;
+    const completedSteps = plan.steps.filter(s => s.status === 'completed').length;
+    return completedSteps / plan.steps.length;
   }
 
   private calculateEfficiency(plan: ExecutionPlan): number {
-    return 0;
+    const completedSteps = plan.steps.filter(s => s.status === 'completed');
+    if (completedSteps.length === 0) return 1;
+
+    let totalEfficiency = 0;
+    for (const step of completedSteps) {
+      if (step.startTime && step.endTime && step.estimatedDuration) {
+        const actualDuration =
+          (new Date(step.endTime).getTime() - new Date(step.startTime).getTime()) / (60 * 1000);
+        const efficiency = step.estimatedDuration / actualDuration;
+        totalEfficiency += efficiency;
+      }
+    }
+
+    return totalEfficiency / completedSteps.length;
   }
 
   private calculateAgentPerformance(plan: ExecutionPlan): number {
-    return 0;
+    const completedSteps = plan.steps.filter(s => s.status === 'completed');
+    if (completedSteps.length === 0) return 1;
+
+    const successfulSteps = completedSteps.filter(s => !s.errors?.length);
+    return successfulSteps.length / completedSteps.length;
   }
 
   private calculatePlanAccuracy(plan: ExecutionPlan): number {
-    return 0;
-  }
+    const completedSteps = plan.steps.filter(s => s.status === 'completed');
+    if (completedSteps.length === 0) return 1;
 
-  private extractLearningPoints(plan: ExecutionPlan): Record<string, unknown>[] {
-    return [];
-  }
+    let totalAccuracy = 0;
+    for (const step of completedSteps) {
+      if (step.startTime && step.endTime && step.estimatedDuration) {
+        const actualDuration =
+          (new Date(step.endTime).getTime() - new Date(step.startTime).getTime()) / (60 * 1000);
+        const accuracy =
+          Math.min(step.estimatedDuration, actualDuration) /
+          Math.max(step.estimatedDuration, actualDuration);
+        totalAccuracy += accuracy;
+      }
+    }
 
-  private generatePerformanceRecommendations(
-    metrics: Record<string, number>,
-    learningPoints: Record<string, unknown>[]
-  ): string[] {
-    return [];
+    return totalAccuracy / completedSteps.length;
   }
 }

@@ -3,7 +3,7 @@ import {
   LearningExperience,
   LearningModel,
   LearningStrategy,
-} from '../../learning/LearningSystem';
+} from '@coworker/shared/dist/agents/learning/LearningSystem';
 
 export class ReinforcementLearningSystem extends LearningSystem {
   constructor(model: LearningModel, strategy: LearningStrategy) {
@@ -31,7 +31,7 @@ export class ReinforcementLearningSystem extends LearningSystem {
     this.model.lastUpdated = new Date();
   }
 
-  async makeDecision(context: Record<string, unknown>): Promise<{
+  async makeDecision(_context: Record<string, unknown>): Promise<{
     action: string;
     confidence: number;
     reasoning: string;
@@ -91,7 +91,7 @@ export class ReinforcementLearningSystem extends LearningSystem {
     }
   }
 
-  async shareKnowledge(peers: string[]): Promise<{
+  async shareKnowledge(_peers: string[]): Promise<{
     sharedExperiences: LearningExperience[];
     updatedModel: Partial<LearningModel>;
   }> {

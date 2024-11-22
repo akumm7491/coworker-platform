@@ -1,5 +1,12 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Repository, EntityManager, QueryRunner, SelectQueryBuilder, ObjectLiteral, DeepPartial } from 'typeorm';
+import {
+  Repository,
+  EntityManager,
+  QueryRunner,
+  SelectQueryBuilder,
+  ObjectLiteral,
+  DeepPartial,
+} from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DomainEvent } from '@coworker/shared/dist/events/definitions/DomainEvent';
 import { EventStore } from '@coworker/shared/dist/events/store/EventStore';

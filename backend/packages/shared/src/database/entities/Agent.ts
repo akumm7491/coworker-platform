@@ -31,8 +31,13 @@ export interface AgentPerformanceEventData extends EventData {
 
 export interface AgentLearningModelEventData extends EventData {
     learning_model: {
-        type: string;
+        model_type: string;
         parameters: Record<string, unknown>;
+        training_data: Array<{
+            input: unknown;
+            output: unknown;
+            feedback: unknown;
+        }>;
         version: string;
     };
 }
@@ -40,14 +45,29 @@ export interface AgentLearningModelEventData extends EventData {
 export interface AgentWorkingMemoryEventData extends EventData {
     working_memory: {
         context: Record<string, unknown>;
-        state: Record<string, unknown>;
+        short_term: Array<{
+            timestamp: string;
+            type: string;
+            data: unknown;
+        }>;
+        long_term: Array<{
+            category: string;
+            knowledge: unknown;
+            last_accessed: string;
+        }>;
     };
 }
 
 export interface AgentCommunicationEventData extends EventData {
     communication: {
-        protocol: string;
-        settings: Record<string, unknown>;
+        style: string;
+        preferences: Record<string, string>;
+        history: Array<{
+            timestamp: string;
+            type: string;
+            content: string;
+            metadata: Record<string, unknown>;
+        }>;
     };
 }
 
@@ -112,8 +132,9 @@ export function isAgentLearningModelEventData(data: unknown): data is AgentLearn
     const d = data as AgentLearningModelEventData;
     if (!d || typeof d !== 'object' || !d.learning_model || typeof d.learning_model !== 'object') return false;
     const model = d.learning_model;
-    return typeof model.type === 'string' &&
+    return typeof model.model_type === 'string' &&
            typeof model.parameters === 'object' && model.parameters !== null &&
+           Array.isArray(model.training_data) && model.training_data.every(td => typeof td === 'object' && td !== null) &&
            typeof model.version === 'string';
 }
 
@@ -122,15 +143,17 @@ export function isAgentWorkingMemoryEventData(data: unknown): data is AgentWorki
     if (!d || typeof d !== 'object' || !d.working_memory || typeof d.working_memory !== 'object') return false;
     const memory = d.working_memory;
     return typeof memory.context === 'object' && memory.context !== null &&
-           typeof memory.state === 'object' && memory.state !== null;
+           Array.isArray(memory.short_term) && memory.short_term.every(st => typeof st === 'object' && st !== null) &&
+           Array.isArray(memory.long_term) && memory.long_term.every(lt => typeof lt === 'object' && lt !== null);
 }
 
 export function isAgentCommunicationEventData(data: unknown): data is AgentCommunicationEventData {
     const d = data as AgentCommunicationEventData;
     if (!d || typeof d !== 'object' || !d.communication || typeof d.communication !== 'object') return false;
     const comm = d.communication;
-    return typeof comm.protocol === 'string' &&
-           typeof comm.settings === 'object' && comm.settings !== null;
+    return typeof comm.style === 'string' &&
+           typeof comm.preferences === 'object' && comm.preferences !== null &&
+           Array.isArray(comm.history) && comm.history.every(h => typeof h === 'object' && h !== null);
 }
 
 export function isAgentAssignmentEventData(data: unknown): data is AgentAssignmentEventData {
@@ -204,21 +227,41 @@ export class Agent extends AggregateRoot {
 
     @Column('jsonb', { default: {} })
     learning_model!: {
-        type: string;
+        model_type: string;
         parameters: Record<string, unknown>;
+        training_data: Array<{
+            input: unknown;
+            output: unknown;
+            feedback: unknown;
+        }>;
         version: string;
     };
 
     @Column('jsonb', { default: {} })
     working_memory!: {
         context: Record<string, unknown>;
-        state: Record<string, unknown>;
+        short_term: Array<{
+            timestamp: string;
+            type: string;
+            data: unknown;
+        }>;
+        long_term: Array<{
+            category: string;
+            knowledge: unknown;
+            last_accessed: string;
+        }>;
     };
 
     @Column('jsonb', { default: {} })
     communication!: {
-        protocol: string;
-        settings: Record<string, unknown>;
+        style: string;
+        preferences: Record<string, string>;
+        history: Array<{
+            timestamp: string;
+            type: string;
+            content: string;
+            metadata: Record<string, unknown>;
+        }>;
     };
 
     @ManyToMany(() => Project)

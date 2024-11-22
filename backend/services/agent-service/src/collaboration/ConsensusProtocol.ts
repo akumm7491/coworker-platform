@@ -39,6 +39,11 @@ export class ConsensusProtocol extends CollaborationProtocol {
       throw new Error('Unauthorized sender');
     }
 
+    // Validate message type
+    if (!['proposal', 'feedback', 'request', 'response'].includes(message.type)) {
+      throw new Error(`Invalid message type: ${message.type}`);
+    }
+
     session.messages.push(message);
 
     // If this is a proposal, check for consensus
@@ -54,7 +59,7 @@ export class ConsensusProtocol extends CollaborationProtocol {
     }
 
     switch (message.type) {
-      case 'proposal':
+      case 'proposal': {
         // Wait for feedback from all participants
         const feedbackMessages = session.messages.filter(
           m => m.type === 'feedback' && m.content.topic === message.content.topic
@@ -68,12 +73,17 @@ export class ConsensusProtocol extends CollaborationProtocol {
           }
         }
         break;
+      }
 
-      case 'request':
+      case 'request': {
         // Generate response based on request type
         const response = await this.generateResponse(session, message);
         await this.sendMessage(sessionId, response);
         break;
+      }
+
+      default:
+        throw new Error(`Unsupported message type: ${message.type}`);
     }
   }
 
@@ -84,6 +94,10 @@ export class ConsensusProtocol extends CollaborationProtocol {
     const session = this.sessions.get(sessionId);
     if (!session) {
       throw new Error(`Session ${sessionId} not found`);
+    }
+
+    if (conflictingProposals.length === 0) {
+      throw new Error('No proposals to resolve');
     }
 
     // Score each proposal based on agent expertise and proposal quality
@@ -105,6 +119,10 @@ export class ConsensusProtocol extends CollaborationProtocol {
     metrics: Record<string, number>;
     learningExperiences: Record<string, unknown>[];
   }> {
+    if (!session) {
+      throw new Error('Session is required');
+    }
+
     const metrics = {
       participationRate: this.calculateParticipationRate(session),
       consensusRate: this.calculateConsensusRate(session),
@@ -151,6 +169,10 @@ export class ConsensusProtocol extends CollaborationProtocol {
     approved: boolean;
     score: number;
   } {
+    if (!feedbackMessages || feedbackMessages.length === 0) {
+      return { approved: false, score: 0 };
+    }
+
     const approvals = feedbackMessages.filter(m => m.content.data.approved === true).length;
     const score = approvals / feedbackMessages.length;
     return {
@@ -163,7 +185,10 @@ export class ConsensusProtocol extends CollaborationProtocol {
     session: CollaborationSession,
     proposal: CollaborationMessage
   ): Promise<void> {
-    // Implementation logic here
+    if (!session || !proposal) {
+      throw new Error('Session and proposal are required');
+    }
+
     session.messages.push({
       type: 'response',
       sender: 'system',
@@ -183,6 +208,10 @@ export class ConsensusProtocol extends CollaborationProtocol {
     session: CollaborationSession,
     request: CollaborationMessage
   ): Promise<CollaborationMessage> {
+    if (!session || !request) {
+      throw new Error('Session and request are required');
+    }
+
     return {
       type: 'response',
       sender: 'system',
@@ -190,7 +219,6 @@ export class ConsensusProtocol extends CollaborationProtocol {
       content: {
         topic: request.content.topic,
         data: {
-          // Response data based on request type
           status: 'processed',
           requestId: request.content.data.id,
         },
@@ -203,6 +231,10 @@ export class ConsensusProtocol extends CollaborationProtocol {
     session: CollaborationSession,
     proposal: CollaborationMessage
   ): Promise<number> {
+    if (!session || !proposal) {
+      throw new Error('Session and proposal are required');
+    }
+
     // Scoring logic based on various factors
     const factors = {
       senderExpertise: 0.4,
@@ -210,15 +242,43 @@ export class ConsensusProtocol extends CollaborationProtocol {
       contextRelevance: 0.3,
     };
 
-    return Object.values(factors).reduce((sum, factor) => sum + factor, 0);
+    // Calculate sender expertise based on their participation in the session
+    const senderParticipation = session.messages.filter(m => m.sender === proposal.sender).length;
+    const totalMessages = session.messages.length;
+    const senderExpertiseScore =
+      (senderParticipation / (totalMessages || 1)) * factors.senderExpertise;
+
+    // Calculate proposal quality based on content structure and completeness
+    const hasContent =
+      proposal.content &&
+      Object.keys(proposal.content.data).length > 0 &&
+      proposal.content.topic.length > 0;
+    const hasContext = proposal.content.context && Object.keys(proposal.content.context).length > 0;
+    const proposalQualityScore =
+      ((hasContent ? 0.6 : 0) + (hasContext ? 0.4 : 0)) * factors.proposalQuality;
+
+    // Calculate context relevance based on session topic alignment
+    const topicRelevance = proposal.content.topic === session.topic ? 1 : 0.5;
+    const contextRelevanceScore = topicRelevance * factors.contextRelevance;
+
+    // Return weighted sum of all scores
+    return senderExpertiseScore + proposalQualityScore + contextRelevanceScore;
   }
 
   private calculateParticipationRate(session: CollaborationSession): number {
+    if (!session || !session.messages || !session.participants) {
+      return 0;
+    }
+
     const activeParticipants = new Set(session.messages.map(m => m.sender)).size;
     return activeParticipants / session.participants.length;
   }
 
   private calculateConsensusRate(session: CollaborationSession): number {
+    if (!session || !session.messages) {
+      return 0;
+    }
+
     const proposals = session.messages.filter(m => m.type === 'proposal');
     if (proposals.length === 0) return 1;
 
@@ -233,11 +293,18 @@ export class ConsensusProtocol extends CollaborationProtocol {
   }
 
   private calculateResolutionTime(session: CollaborationSession): number {
-    if (!session.endTime) return 0;
+    if (!session || !session.startTime || !session.endTime) {
+      return 0;
+    }
+
     return session.endTime.getTime() - session.startTime.getTime();
   }
 
   private calculateConflictRate(session: CollaborationSession): number {
+    if (!session || !session.messages) {
+      return 0;
+    }
+
     const proposals = session.messages.filter(m => m.type === 'proposal');
     if (proposals.length === 0) return 0;
 
@@ -255,15 +322,41 @@ export class ConsensusProtocol extends CollaborationProtocol {
   }
 
   private calculateResponseTime(message: CollaborationMessage): number {
-    // Calculate average time to get responses
-    return 0; // Implement actual calculation
+    if (!message || !message.type || message.type !== 'request') {
+      return 0;
+    }
+
+    // Find responses to this message in any session
+    let responses: CollaborationMessage[] = [];
+    for (const session of this.sessions.values()) {
+      if (session.messages.includes(message)) {
+        responses = session.messages.filter(
+          m =>
+            m.type === 'response' &&
+            m.content.topic === message.content.topic &&
+            m.timestamp > message.timestamp
+        );
+        break; // Found the session containing our message
+      }
+    }
+
+    if (responses.length === 0) return 0;
+
+    // Calculate average response time in milliseconds
+    const responseTimes = responses.map(
+      response => response.timestamp.getTime() - message.timestamp.getTime()
+    );
+
+    return responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
   }
 
   private calculateAcceptanceRate(
     session: CollaborationSession,
     message: CollaborationMessage
   ): number {
-    if (message.type !== 'proposal') return 1;
+    if (!session || !message || message.type !== 'proposal') {
+      return 0;
+    }
 
     const feedbacks = session.messages.filter(
       m => m.type === 'feedback' && m.content.topic === message.content.topic
