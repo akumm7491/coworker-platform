@@ -1,26 +1,14 @@
-import { Result } from '../../common/Result';
-import { ValidationError } from '../../common/errors/DomainError';
-
 export class Email {
-  private constructor(public readonly value: string) {}
+  private constructor(private readonly value: string) {}
 
-  public static create(email: string): Result<Email, ValidationError> {
-    if (!email) {
-      return Result.fail(new ValidationError('Email cannot be empty'));
-    }
-
+  static create(email: string): Email {
     if (!email.includes('@')) {
-      return Result.fail(new ValidationError('Invalid email format'));
+      throw new Error('Invalid email format');
     }
-
-    return Result.ok(new Email(email.toLowerCase()));
+    return new Email(email);
   }
 
-  public equals(other: Email): boolean {
-    return this.value === other.value;
-  }
-
-  public toString(): string {
+  toString(): string {
     return this.value;
   }
 }

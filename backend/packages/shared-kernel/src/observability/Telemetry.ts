@@ -1,115 +1,46 @@
-import { randomUUID } from 'crypto';
+import { createHash } from 'crypto';
+import { BaseError, ErrorCategory, ErrorSeverity } from '../common/errors/BaseError';
 
-export interface TraceContext {
-  traceId: string;
-  spanId: string;
-  parentSpanId?: string;
-}
+export class Telemetry {
+  private static instance: Telemetry;
+  private readonly traces: Map<string, number> = new Map();
 
-export interface TelemetrySpan {
-  readonly context: TraceContext;
-  readonly startTime: number;
-  readonly name: string;
+  private constructor() {}
 
-  addAttribute(key: string, value: string | number | boolean): void;
-  addEvent(name: string, attributes?: Record<string, any>): void;
-  end(endTime?: number): void;
-}
-
-export interface ITelemetryTracer {
-  startSpan(name: string, options?: { parent?: TraceContext }): TelemetrySpan;
-  getCurrentSpan(): TelemetrySpan | undefined;
-  withSpan<T>(
-    name: string,
-    fn: (span: TelemetrySpan) => Promise<T>,
-    options?: { parent?: TraceContext }
-  ): Promise<T>;
-}
-
-export class TelemetrySpanImpl implements TelemetrySpan {
-  private attributes: Map<string, string | number | boolean> = new Map();
-  private events: Array<{ name: string; timestamp: number; attributes?: Record<string, any> }> = [];
-  private endTime?: number;
-
-  constructor(
-    public readonly context: TraceContext,
-    public readonly startTime: number,
-    public readonly name: string
-  ) {}
-
-  addAttribute(key: string, value: string | number | boolean): void {
-    if (this.endTime) {
-      throw new Error('Cannot add attribute to ended span');
+  static getInstance(): Telemetry {
+    if (!Telemetry.instance) {
+      Telemetry.instance = new Telemetry();
     }
-    this.attributes.set(key, value);
+    return Telemetry.instance;
   }
 
-  addEvent(name: string, attributes?: Record<string, any>): void {
-    if (this.endTime) {
-      throw new Error('Cannot add event to ended span');
-    }
-    this.events.push({
-      name,
-      timestamp: Date.now(),
-      attributes,
-    });
-  }
-
-  end(endTime: number = Date.now()): void {
-    if (this.endTime) {
-      throw new Error('Span already ended');
-    }
-    this.endTime = endTime;
-  }
-
-  toJSON(): Record<string, any> {
-    return {
-      traceId: this.context.traceId,
-      spanId: this.context.spanId,
-      parentSpanId: this.context.parentSpanId,
-      name: this.name,
-      startTime: this.startTime,
-      endTime: this.endTime,
-      attributes: Object.fromEntries(this.attributes),
-      events: this.events,
-    };
-  }
-}
-
-export class TelemetryTracer implements ITelemetryTracer {
-  private currentSpan?: TelemetrySpan;
-
-  startSpan(name: string, options?: { parent?: TraceContext }): TelemetrySpan {
-    const context: TraceContext = {
-      traceId: options?.parent?.traceId ?? randomUUID(),
-      spanId: randomUUID(),
-      parentSpanId: options?.parent?.spanId,
-    };
-
-    const span = new TelemetrySpanImpl(context, Date.now(), name);
-    this.currentSpan = span;
-    return span;
-  }
-
-  getCurrentSpan(): TelemetrySpan | undefined {
-    return this.currentSpan;
-  }
-
-  async withSpan<T>(
-    name: string,
-    fn: (span: TelemetrySpan) => Promise<T>,
-    options?: { parent?: TraceContext }
-  ): Promise<T> {
-    const span = this.startSpan(name, options);
+  startTrace(operationName: string): string {
     try {
-      const result = await fn(span);
-      return result;
+      const traceId = createHash('sha256')
+        .update(`${operationName}-${Date.now()}`)
+        .digest('hex');
+      this.traces.set(traceId, Date.now());
+      return traceId;
     } catch (error) {
-      span.addAttribute('error', true);
-      span.addAttribute('error.message', error.message);
-      throw error;
-    } finally {
-      span.end();
+      throw new BaseError(
+        `Failed to start trace: ${error}`,
+        ErrorCategory.Infrastructure,
+        ErrorSeverity.Low
+      );
     }
+  }
+
+  endTrace(traceId: string): number {
+    const startTime = this.traces.get(traceId);
+    if (!startTime) {
+      throw new BaseError(
+        `Trace ID not found: ${traceId}`,
+        ErrorCategory.Infrastructure,
+        ErrorSeverity.Low
+      );
+    }
+    const duration = Date.now() - startTime;
+    this.traces.delete(traceId);
+    return duration;
   }
 }

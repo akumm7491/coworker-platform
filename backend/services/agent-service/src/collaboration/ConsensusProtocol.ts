@@ -3,7 +3,7 @@ import {
   CollaborationProtocol,
   CollaborationMessage,
   CollaborationSession,
-} from '@coworker/shared/dist/agents/collaboration/CollaborationProtocol';
+} from '../../../../packages/agents/collaboration/CollaborationProtocol';
 import { v4 as uuidv4 } from 'uuid';
 
 export class ConsensusProtocol extends CollaborationProtocol {

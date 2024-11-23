@@ -3,7 +3,7 @@ import {
   LearningExperience,
   LearningModel,
   LearningStrategy,
-} from '@coworker/shared/dist/agents/learning/LearningSystem';
+} from '../../../../packages/agents/learning/LearningSystem';
 
 export class ReinforcementLearningSystem extends LearningSystem {
   constructor(model: LearningModel, strategy: LearningStrategy) {

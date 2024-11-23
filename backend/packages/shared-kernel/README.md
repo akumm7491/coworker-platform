@@ -1,153 +1,226 @@
-# Shared Kernel
+# @coworker/shared-kernel
 
-This package provides a comprehensive foundation for building domain-driven, event-sourced microservices. It implements common patterns and infrastructure concerns, allowing services to focus on their domain-specific business logic.
+A Domain-Driven Design (DDD) and Event-Driven Architecture shared kernel for the Coworker platform microservices.
 
-## Core Features
+## Overview
 
-### Domain-Driven Design Support
-- **Aggregate Roots**: Base classes for implementing aggregate patterns
-- **Domain Events**: Event handling and publishing infrastructure
-- **Value Objects**: Common value object implementations
-- **Domain Services**: Base classes for domain service pattern
-- **Repositories**: Layered repository pattern with infrastructure support
+This package provides the foundational building blocks for implementing DDD and Event-Driven microservices. It includes:
 
-### Infrastructure Layer
-- **Persistence**: Generic repository pattern with caching and retry support
-- **Messaging**: Event bus implementation with outbox pattern
-- **Concurrency**: Distributed locking and concurrency control
-- **Health Checks**: Health monitoring system
-- **Security**: Rate limiting and basic security patterns
+- Base domain entities and value objects
+- Event handling infrastructure
+- Repository patterns
+- Common error handling
+- Caching mechanisms
+- Type-safe implementations
+- Telemetry and observability
 
-### Error Handling & Resilience
-- **Error Classification**: Domain vs Infrastructure errors
-- **Retry Strategies**: Configurable retry policies
-- **Circuit Breaking**: Basic circuit breaker implementation
-- **Result Type**: Error handling without exceptions
+## Package Structure
 
-### Observability
-- **Structured Logging**: Context-aware logging system
-- **Metrics**: Basic metrics collection
-- **Tracing**: Request tracing support
-- **Health Monitoring**: Health check system
+```
+src/
+├── common/              # Shared utilities and base types
+│   ├── Result.ts       # Result type for error handling
+│   └── errors/         # Error hierarchy (Domain, Infrastructure)
+│
+├── domain/             # Domain layer components
+│   ├── base/          # Base classes for DDD
+│   │   ├── AggregateRoot.ts
+│   │   ├── Entity.ts
+│   │   └── ValueObject.ts
+│   ├── events/        # Domain event handling
+│   │   ├── DomainEvent.ts
+│   │   └── EventBus.ts
+│   └── repositories/  # Repository interfaces
+│
+├── infrastructure/    # Technical implementations
+│   ├── cache/        # Caching infrastructure
+│   │   └── RedisCache.ts
+│   ├── persistence/  # Database access
+│   │   └── BaseRepository.ts
+│   └── messaging/    # Message bus implementation
+│
+├── observability/    # Telemetry and monitoring
+│   └── Telemetry.ts
+│
+└── examples/         # Reference implementations
+    ├── domain/      # Example domain model
+    │   └── UserAggregate.ts
+    ├── infrastructure/
+    │   └── UserRepository.ts
+    └── value-objects/
+        └── Email.ts
+```
 
-## Usage Examples
+## Docker Support
 
-### Repository Pattern
+The shared-kernel package includes a base Dockerfile that other services can extend. This ensures consistency across services and reduces configuration duplication.
 
-The repository pattern is implemented in three layers:
+### Base Dockerfile Features
 
-1. **Infrastructure Layer** (`IRepository` & `BaseRepository`):
+- Multi-stage builds for optimal image size
+- Production-optimized configuration
+- Security best practices
+- Shared dependencies and types
+- Volume support for code sharing
+
+### Building the Base Image
+
+```bash
+# Build the shared-kernel base image
+docker build -t shared-kernel .
+```
+
+### Using in Other Services
+
+1. Create a Dockerfile in your service directory:
+
+```dockerfile
+# Example service Dockerfile
+FROM shared-kernel AS shared
+
+FROM node:20-alpine AS base
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Copy shared dependencies and types
+COPY --from=shared /app/node_modules/@coworker/shared-kernel ./node_modules/@coworker/shared-kernel
+COPY --from=shared /app/dist ./node_modules/@coworker/shared-kernel/dist
+
+# Add your service-specific configuration
+...
+```
+
+2. Build your service:
+
+```bash
+docker build -t your-service .
+```
+
+### Docker Compose Integration
+
+Example docker-compose.yml for local development:
+
+```yaml
+version: '3.8'
+
+services:
+  shared-kernel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./dist:/app/dist
+      - ./node_modules:/app/node_modules
+
+  your-service:
+    build:
+      context: ../your-service
+      dockerfile: Dockerfile
+    depends_on:
+      - shared-kernel
+    environment:
+      - NODE_ENV=development
+```
+
+## Getting Started
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Build the package:
+```bash
+npm run build
+```
+
+3. Run tests:
+```bash
+npm test
+```
+
+## Usage
+
+Example usage of the User aggregate and repository:
+
 ```typescript
-// Basic CRUD operations with retry and caching
-class BaseRepository<T> {
-  constructor(options: RepositoryOptions) {
-    // Configure caching, retry strategies
-  }
+import { UserAggregate } from '@domain/UserAggregate';
+import { UserRepository } from '@infrastructure/UserRepository';
+import { Result } from '@common/Result';
+
+// Create a new user
+const userOrError = UserAggregate.create({
+  email: 'user@example.com',
+  name: 'John Doe'
+});
+
+if (userOrError.isOk()) {
+  const user = userOrError.getValue();
+  const result = await userRepository.save(user);
   
-  protected async withRetry<R>(operation: () => Promise<Result<R>>) {
-    // Handles retries with exponential backoff
+  if (result.isOk()) {
+    // User saved successfully
+    const savedUser = result.getValue();
   }
 }
 ```
 
-2. **Domain Layer** (`IDomainRepository` & `BaseDomainRepository`):
-```typescript
-// Adds domain-specific operations and event handling
-class BaseDomainRepository<T extends AggregateRoot> extends BaseRepository<T> {
-  constructor(dataSource: DataSource, eventBus: IEventBus) {
-    super();
-  }
+## Configuration
 
-  async publishEvents(entity: T): Promise<void> {
-    // Publishes domain events
-  }
+The package requires the following environment variables:
 
-  protected async withTransaction<R>(operation: () => Promise<Result<R>>) {
-    // Handles transactions
-  }
-}
+- `REDIS_HOST`: Redis server host
+- `REDIS_PORT`: Redis server port
+- `REDIS_PASSWORD`: Redis server password (optional)
+- `REDIS_DB`: Redis database number
+
+## Development
+
+1. Run linting:
+```bash
+npm run lint
 ```
 
-3. **Service Implementation**:
-```typescript
-// Concrete implementation in a service
-class UserRepository extends BaseDomainRepository<UserAggregate> {
-  async findByEmail(email: string): Promise<Result<UserAggregate>> {
-    return this.withRetryAndTransaction(async (qr) => {
-      // Implement domain-specific query
-    });
-  }
-}
+2. Format code:
+```bash
+npm run format
 ```
 
-### Error Handling
-
-```typescript
-// Using the Result type for error handling
-async function createUser(data: UserDTO): Promise<Result<User, ValidationError>> {
-  const validationResult = await validate(data);
-  if (!validationResult.isValid) {
-    return Result.fail(new ValidationError(validationResult.errors));
-  }
-  
-  return Result.ok(new User(data));
-}
-```
-
-### Event Handling
-
-```typescript
-// Publishing domain events
-class UserAggregate extends AggregateRoot {
-  register(email: string): Result<void> {
-    // Business logic
-    this.addDomainEvent(new UserRegisteredEvent(this.id, email));
-    return Result.ok();
-  }
-}
-
-// Handling events with retry
-class UserEventHandler {
-  @EventHandler(UserRegisteredEvent)
-  async onUserRegistered(event: UserRegisteredEvent): Promise<void> {
-    await this.retryStrategy.execute(async () => {
-      // Handle the event
-    });
-  }
-}
+3. Run tests with coverage:
+```bash
+npm run test:cov
 ```
 
 ## Best Practices
 
-1. **Error Handling**:
-   - Use the Result type for expected failures
-   - Throw errors only for programmer errors
-   - Always categorize errors properly
+1. **Domain-Driven Design**
+   - Keep domain logic in aggregates
+   - Use value objects for domain concepts
+   - Implement domain events for state changes
 
-2. **Repository Pattern**:
-   - Implement specific query methods in domain repositories
-   - Use the withRetryAndTransaction helper for operations
-   - Always publish domain events after successful operations
+2. **Error Handling**
+   - Use Result type for operations
+   - Implement proper error context
+   - Handle infrastructure errors appropriately
 
-3. **Event Handling**:
-   - Keep events immutable
-   - Include all necessary data in the event
-   - Use the outbox pattern for reliability
+3. **Testing**
+   - Write unit tests for domain logic
+   - Integration tests for repositories
+   - Mock external dependencies
 
-4. **Testing**:
-   - Use the provided test helpers
-   - Mock at the repository level
-   - Test error cases and retries
+4. **Docker Best Practices**
+   - Use multi-stage builds
+   - Minimize image size
+   - Follow security best practices
+   - Share common dependencies
 
 ## Contributing
 
-When adding new features to the shared kernel:
-
-1. Follow the existing patterns and naming conventions
-2. Add proper TypeScript types and documentation
-3. Include unit tests for new functionality
-4. Update this README with examples if needed
+1. Follow the established patterns in the examples
+2. Ensure proper error handling
+3. Add tests for new functionality
+4. Update documentation as needed
 
 ## License
 
-Internal use only - All rights reserved
+MIT

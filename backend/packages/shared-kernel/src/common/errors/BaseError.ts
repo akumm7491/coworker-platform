@@ -1,70 +1,34 @@
-export enum ErrorSeverity {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-  CRITICAL = 'CRITICAL',
-}
-
 export enum ErrorCategory {
-  VALIDATION = 'VALIDATION',
-  BUSINESS_RULE = 'BUSINESS_RULE',
-  TECHNICAL = 'TECHNICAL',
-  INFRASTRUCTURE = 'INFRASTRUCTURE',
-  SECURITY = 'SECURITY',
-  EXTERNAL = 'EXTERNAL',
+  Domain = 'Domain',
+  Infrastructure = 'Infrastructure',
+  Application = 'Application',
 }
 
-export interface ErrorMetadata {
-  code: string;
-  severity: ErrorSeverity;
-  category: ErrorCategory;
-  retryable: boolean;
-  context?: Record<string, unknown>;
+export enum ErrorSeverity {
+  Low = 'Low',
+  Medium = 'Medium',
+  High = 'High',
+  Critical = 'Critical',
 }
 
-export abstract class BaseError extends Error {
-  public readonly severity: ErrorSeverity;
-  public readonly category: ErrorCategory;
-  public readonly code: string;
+export class BaseError extends Error {
   public readonly retryable: boolean;
-  public readonly context?: Record<string, unknown>;
-  public readonly timestamp: Date;
 
-  constructor(message: string, metadata: ErrorMetadata) {
+  constructor(
+    message: string,
+    public readonly category: ErrorCategory = ErrorCategory.Application,
+    public readonly severity: ErrorSeverity = ErrorSeverity.Medium,
+    retryable = false
+  ) {
     super(message);
     this.name = this.constructor.name;
-    this.severity = metadata.severity;
-    this.category = metadata.category;
-    this.code = metadata.code;
-    this.retryable = metadata.retryable;
-    this.context = metadata.context;
-    this.timestamp = new Date();
-    Error.captureStackTrace(this, this.constructor);
-  }
+    this.retryable = retryable;
 
-  public toJSON(): Record<string, unknown> {
-    return {
-      name: this.name,
-      message: this.message,
-      code: this.code,
-      severity: this.severity,
-      category: this.category,
-      retryable: this.retryable,
-      context: this.context,
-      timestamp: this.timestamp,
-      stack: this.stack,
-    };
-  }
-
-  public isRetryable(): boolean {
-    return this.retryable;
-  }
-
-  public getSeverity(): ErrorSeverity {
-    return this.severity;
-  }
-
-  public getCategory(): ErrorCategory {
-    return this.category;
+    // Check if Error.captureStackTrace exists before using it
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, this.constructor);
+    } else {
+      this.stack = new Error().stack;
+    }
   }
 }

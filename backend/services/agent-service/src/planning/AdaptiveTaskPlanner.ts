@@ -4,7 +4,7 @@ import {
   TaskPlanner,
   ExecutionPlan,
   PlanStep,
-} from '@coworker/shared/dist/agents/planning/TaskPlanner';
+} from '../../../../packages/agents/planning/TaskPlanner';
 import { v4 as uuidv4 } from 'uuid';
 
 interface TaskDependency {

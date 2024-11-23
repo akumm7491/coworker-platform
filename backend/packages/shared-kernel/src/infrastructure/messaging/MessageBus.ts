@@ -1,127 +1,61 @@
-import { Result } from '../../common/Result';
-import { IDomainEvent } from '../../domain/events/DomainEvent';
-import { MessageBusError, ExternalServiceError } from '../../common/errors/InfrastructureError';
-import { BaseError } from '../../common/errors/BaseError';
-import { DefaultRetryStrategy, RetryStrategy } from '../../common/retry/RetryStrategy';
+import { BaseError, ErrorCategory, ErrorSeverity } from '../../common/errors/BaseError';
 
-export interface PublishOptions {
-  partitionKey?: string;
-  headers?: Record<string, string>;
-  retryStrategy?: RetryStrategy;
+export class MessageBusError extends BaseError {
+  constructor(message: string) {
+    super(message, ErrorCategory.Infrastructure, ErrorSeverity.High, true);
+  }
 }
 
-export interface SubscribeOptions {
-  groupId: string;
-  concurrency?: number;
-  retryStrategy?: RetryStrategy;
-  deadLetterQueue?: string;
+export class ExternalServiceError extends BaseError {
+  constructor(message: string) {
+    super(message, ErrorCategory.Infrastructure, ErrorSeverity.High, true);
+  }
 }
 
-export interface IMessageBus {
-  publish<T extends IDomainEvent>(
-    topic: string,
-    message: T,
-    options?: PublishOptions
-  ): Promise<Result<void, BaseError>>;
-  subscribe<T extends IDomainEvent>(
-    topic: string,
-    handler: (message: T) => Promise<void>,
-    options?: SubscribeOptions
-  ): Promise<Result<void, BaseError>>;
+export interface Message {
+  id: string;
+  type: string;
+  payload: any;
+  metadata?: Record<string, any>;
 }
 
-export abstract class MessageBus implements IMessageBus {
-  async publish<T extends IDomainEvent>(
-    topic: string,
-    message: T,
-    options?: PublishOptions
-  ): Promise<Result<void, BaseError>> {
-    const retryStrategy = options?.retryStrategy || DefaultRetryStrategy;
+export interface MessageHandler {
+  handle(message: Message): Promise<void>;
+}
 
-    return retryStrategy.execute(async () => {
-      try {
-        const validationResult = this.validateMessage(message);
-        if (!validationResult.isOk()) {
-          return Result.fail(
-            new MessageBusError(
-              `Message validation failed for ${topic}: ${validationResult.getError().message}`,
-              false
-            )
+export class MessageBus {
+  private handlers: Map<string, MessageHandler[]> = new Map();
+
+  async publish(message: Message): Promise<void> {
+    const handlers = this.handlers.get(message.type) || [];
+
+    if (handlers.length === 0) {
+      throw new MessageBusError(`No handlers registered for message type: ${message.type}`);
+    }
+
+    await Promise.all(
+      handlers.map(handler =>
+        handler.handle(message).catch(error => {
+          throw new ExternalServiceError(
+            `Handler failed to process message ${message.id}: ${error.message}`
           );
-        }
-
-        const result = await this.doPublish(topic, message, options);
-        if (!result.isOk()) {
-          return Result.fail(
-            new MessageBusError(
-              `Failed to publish message to ${topic}: ${result.getError().message}`,
-              true
-            )
-          );
-        }
-
-        return Result.ok(undefined);
-      } catch (error) {
-        return Result.fail(
-          new ExternalServiceError(
-            'MessageBus',
-            error instanceof Error ? error.message : String(error)
-          )
-        );
-      }
-    });
+        })
+      )
+    );
   }
 
-  async subscribe<T extends IDomainEvent>(
-    topic: string,
-    handler: (message: T) => Promise<void>,
-    options?: SubscribeOptions
-  ): Promise<Result<void, BaseError>> {
-    const retryStrategy = options?.retryStrategy || DefaultRetryStrategy;
-
-    return retryStrategy.execute(async () => {
-      try {
-        const result = await this.doSubscribe(topic, handler, options);
-        if (!result.isOk()) {
-          return Result.fail(
-            new MessageBusError(
-              `Failed to subscribe to ${topic}: ${result.getError().message}`,
-              true
-            )
-          );
-        }
-
-        return Result.ok(undefined);
-      } catch (error) {
-        return Result.fail(
-          new ExternalServiceError(
-            'MessageBus',
-            error instanceof Error ? error.message : String(error)
-          )
-        );
-      }
-    });
+  subscribe(messageType: string, handler: MessageHandler): void {
+    const handlers = this.handlers.get(messageType) || [];
+    handlers.push(handler);
+    this.handlers.set(messageType, handlers);
   }
 
-  protected abstract doPublish<T extends IDomainEvent>(
-    topic: string,
-    message: T,
-    options?: PublishOptions
-  ): Promise<Result<void>>;
-
-  protected abstract doSubscribe<T extends IDomainEvent>(
-    topic: string,
-    handler: (message: T) => Promise<void>,
-    options?: SubscribeOptions
-  ): Promise<Result<void>>;
-
-  protected validateMessage<T extends IDomainEvent>(message: T): Result<void> {
-    if (!message.eventType) {
-      return Result.fail(new MessageBusError('Message must have an event type'));
+  unsubscribe(messageType: string, handler: MessageHandler): void {
+    const handlers = this.handlers.get(messageType) || [];
+    const index = handlers.indexOf(handler);
+    if (index > -1) {
+      handlers.splice(index, 1);
+      this.handlers.set(messageType, handlers);
     }
-    if (!message.aggregateId) {
-      return Result.fail(new MessageBusError('Message must have an aggregate ID'));
-    }
-    return Result.ok(undefined);
   }
 }

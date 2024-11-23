@@ -1,0 +1,49 @@
+# Example Dockerfile for a service that uses shared-kernel
+FROM shared-kernel AS shared
+
+# Use the same base as shared-kernel
+FROM node:20-alpine AS base
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Install dependencies required for native modules
+RUN apk add --no-cache python3 make g++
+
+# Dependencies stage
+FROM base AS dependencies
+WORKDIR /app
+# Copy package files
+COPY package*.json ./
+# Copy shared-kernel dependencies
+COPY --from=shared /app/node_modules/@coworker/shared-kernel ./node_modules/@coworker/shared-kernel
+RUN npm ci
+
+# Build stage
+FROM dependencies AS builder
+WORKDIR /app
+# Copy shared-kernel types and dist
+COPY --from=shared /app/dist ./node_modules/@coworker/shared-kernel/dist
+# Copy source code
+COPY . .
+RUN npm run build
+
+# Production stage
+FROM base AS production
+WORKDIR /app
+
+# Copy runtime dependencies and built files
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY package*.json ./
+
+# Clean up dev dependencies
+RUN npm prune --production
+
+# Set user for security
+USER node
+
+# Service-specific configuration
+ENV PORT=3000
+EXPOSE ${PORT}
+
+CMD ["node", "dist/index.js"]
