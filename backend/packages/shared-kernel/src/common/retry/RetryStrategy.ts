@@ -1,5 +1,6 @@
 import { Result } from '../Result';
-import { BaseError, ErrorCategory, ErrorSeverity } from '../errors/BaseError';
+import { BaseError, ErrorSeverity } from '../errors/BaseError';
+import { InfrastructureError } from '../errors/InfrastructureError';
 
 export interface RetryOptions {
   maxAttempts: number;
@@ -12,7 +13,7 @@ export interface RetryOptions {
 export interface RetryContext {
   attempt: number;
   startTime: number;
-  lastError?: Error;
+  lastError?: BaseError;
 }
 
 export type RetryDecision = {
@@ -24,9 +25,9 @@ export class RetryStrategy {
   constructor(private readonly options: RetryOptions) {}
 
   public async execute<T>(
-    operation: () => Promise<Result<T>>,
-    errorFilter?: (error: Error) => boolean
-  ): Promise<Result<T>> {
+    operation: () => Promise<Result<T, BaseError>>,
+    errorFilter?: (error: BaseError) => boolean
+  ): Promise<Result<T, BaseError>> {
     const context: RetryContext = {
       attempt: 0,
       startTime: Date.now(),
@@ -50,66 +51,77 @@ export class RetryStrategy {
         await this.delay(decision.delay);
         context.attempt++;
       } catch (error) {
-        context.lastError = error instanceof Error ? error : new Error(String(error));
+        // Convert unexpected errors to InfrastructureError
+        const baseError =
+          error instanceof BaseError
+            ? error
+            : new InfrastructureError(
+                error instanceof Error ? error.message : String(error),
+                'UNEXPECTED_ERROR',
+                ErrorSeverity.HIGH,
+                true,
+                { attempt: context.attempt }
+              );
 
-        const decision = this.shouldRetry(context.lastError, context, errorFilter);
+        context.lastError = baseError;
+        const decision = this.shouldRetry(baseError, context, errorFilter);
         if (!decision.shouldRetry) {
-          return Result.fail(context.lastError);
+          return Result.fail(baseError);
         }
 
         await this.delay(decision.delay);
         context.attempt++;
       }
-    } while (context.attempt < this.options.maxAttempts);
+    } while (this.canContinue(context));
 
     // If we've exhausted all retries, return the last error
-    return Result.fail(context.lastError || new Error('Max retry attempts reached'));
+    return Result.fail(
+      context.lastError ??
+        new InfrastructureError(
+          'Maximum retry attempts exceeded',
+          'MAX_RETRIES_EXCEEDED',
+          ErrorSeverity.HIGH,
+          false,
+          {
+            maxAttempts: this.options.maxAttempts,
+            totalTime: Date.now() - context.startTime,
+          }
+        )
+    );
   }
 
   private shouldRetry(
-    error: Error,
+    error: BaseError,
     context: RetryContext,
-    errorFilter?: (error: Error) => boolean
+    errorFilter?: (error: BaseError) => boolean
   ): RetryDecision {
-    // Check if we've exceeded max attempts
-    if (context.attempt >= this.options.maxAttempts) {
+    if (!this.canContinue(context)) {
       return { shouldRetry: false, delay: 0 };
     }
 
-    // Check if we've exceeded timeout
-    if (this.options.timeout && Date.now() - context.startTime >= this.options.timeout) {
-      return { shouldRetry: false, delay: 0 };
-    }
-
-    // Check if error is retryable
-    if (error instanceof BaseError) {
-      if (!error.isRetryable()) {
-        return { shouldRetry: false, delay: 0 };
-      }
-
-      // Don't retry critical errors
-      if (error.getSeverity() === ErrorSeverity.CRITICAL) {
-        return { shouldRetry: false, delay: 0 };
-      }
-
-      // Always retry infrastructure errors unless explicitly marked as non-retryable
-      if (error.getCategory() === ErrorCategory.INFRASTRUCTURE && error.isRetryable()) {
-        return {
-          shouldRetry: true,
-          delay: this.calculateDelay(context.attempt),
-        };
-      }
-    }
-
-    // Use custom error filter if provided
     if (errorFilter && !errorFilter(error)) {
       return { shouldRetry: false, delay: 0 };
     }
 
-    return {
-      shouldRetry: true,
-      delay: this.calculateDelay(context.attempt),
-    };
+    // Don't retry if the error is explicitly marked as not retryable
+    if (error instanceof BaseError && !error.retryable) {
+      return { shouldRetry: false, delay: 0 };
+    }
+
+    const delay = this.calculateDelay(context.attempt);
+    return { shouldRetry: true, delay };
+  }
+
+  private canContinue(context: RetryContext): boolean {
+    if (context.attempt >= this.options.maxAttempts) {
+      return false;
+    }
+
+    if (this.options.timeout && Date.now() - context.startTime >= this.options.timeout) {
+      return false;
+    }
+
+    return true;
   }
 
   private calculateDelay(attempt: number): number {
@@ -119,7 +131,7 @@ export class RetryStrategy {
     );
 
     // Add jitter to prevent thundering herd
-    return delay * (0.5 + Math.random());
+    return delay * (0.5 + Math.random() * 0.5);
   }
 
   private delay(ms: number): Promise<void> {
