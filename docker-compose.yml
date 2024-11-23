@@ -50,24 +50,27 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  identity-service:
+  task-service:
     build:
-      context: .
-      dockerfile: server/src/services/identity/Dockerfile.dev
+      context: ./backend
+      dockerfile: packages/task-service/Dockerfile.dev
     ports:
-      - "3451:3451"
+      - "3455:3455"
     environment:
       - NODE_ENV=development
-      - PORT=3451
+      - PORT=3455
+      - KAFKA_BROKERS=kafka:9092
       - POSTGRES_URL=postgres://postgres:postgres@postgres:5432/coworker
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
-      - JWT_EXPIRES_IN=30d
     volumes:
-      - ./server/src:/app/server/src
+      - ./backend/packages/task-service/src:/app/backend/packages/task-service/src
+      - ./backend/packages/shared-kernel/src:/app/backend/packages/shared-kernel/src
     networks:
       - app-network
     depends_on:
       postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     restart: unless-stopped
 
@@ -87,9 +90,9 @@ services:
       start_period: 40s
 
   postgres:
-    image: postgres:15
+    image: postgres:latest
     ports:
-      - "5433:5432"
+      - "5432:5432"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -100,9 +103,42 @@ services:
       - app-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - app-network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
 networks:
   app-network:

@@ -121,16 +121,109 @@ services:
     networks:
       - app-network
 
+  task-service:
+    build:
+      context: ./backend/packages/task-service
+      dockerfile: Dockerfile.dev
+    ports:
+      - '3455:3455'
+    volumes:
+      - ./backend/packages/task-service:/app
+      - ./backend/packages/shared-kernel:/app/shared-kernel
+      - /app/node_modules
+    environment:
+      - PORT=3455
+      - NODE_ENV=development
+      - POSTGRES_URL=postgres://postgres:postgres@postgres:5432/task_db
+      - KAFKA_BROKERS=kafka:29092
+    depends_on:
+      - postgres
+      - kafka
+      - zookeeper
+    networks:
+      - app-network
+
+  team-service:
+    build:
+      context: ./backend/packages/team-service
+      dockerfile: Dockerfile.dev
+    ports:
+      - '3456:3456'
+    volumes:
+      - ./backend/packages/team-service:/app
+      - ./backend/packages/shared-kernel:/app/shared-kernel
+      - /app/node_modules
+    environment:
+      - PORT=3456
+      - NODE_ENV=development
+      - POSTGRES_URL=postgres://postgres:postgres@postgres:5432/team_db
+      - KAFKA_BROKERS=kafka:29092
+    depends_on:
+      - postgres
+      - kafka
+      - zookeeper
+    networks:
+      - app-network
+
+  agent-service-new:
+    build:
+      context: ./backend/packages/agent-service
+      dockerfile: Dockerfile.dev
+    ports:
+      - '3457:3457'
+    volumes:
+      - ./backend/packages/agent-service:/app
+      - ./backend/packages/shared-kernel:/app/shared-kernel
+      - /app/node_modules
+    environment:
+      - PORT=3457
+      - NODE_ENV=development
+      - POSTGRES_URL=postgres://postgres:postgres@postgres:5432/agent_db
+      - KAFKA_BROKERS=kafka:29092
+    depends_on:
+      - postgres
+      - kafka
+      - zookeeper
+    networks:
+      - app-network
+
   postgres:
     image: postgres:15-alpine
     ports:
-      - '5433:5432'  # Changed from 5432:5432 to avoid conflict
+      - '5433:5432'
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.2
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - '2181:2181'
+    networks:
+      - app-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.2
+    depends_on:
+      - zookeeper
+    ports:
+      - '9092:9092'
+      - '29092:29092'
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks:
       - app-network
 
@@ -140,32 +233,6 @@ services:
       - '6379:6379'
     volumes:
       - redis_data:/data
-    networks:
-      - app-network
-
-  kafka:
-    image: confluentinc/cp-kafka:7.3.0
-    ports:
-      - '9092:9092'
-    environment:
-      - KAFKA_BROKER_ID=1
-      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-    depends_on:
-      - zookeeper
-    networks:
-      - app-network
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.3.0
-    ports:
-      - '2181:2181'
-    environment:
-      - ZOOKEEPER_CLIENT_PORT=2181
-      - ZOOKEEPER_TICK_TIME=2000
     networks:
       - app-network
 

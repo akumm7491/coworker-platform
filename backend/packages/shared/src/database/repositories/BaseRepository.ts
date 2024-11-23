@@ -1,7 +1,7 @@
 import { EntityManager, FindOptionsWhere, Repository as TypeORMRepository, DeepPartial } from 'typeorm';
-import { DomainEvent } from '../../../events/definitions/DomainEvent';
-import { EventStore } from '../../../events/store/EventStore';
-import { AggregateRoot } from '../../base/AggregateRoot';
+import { DomainEvent } from '../../events/definitions/DomainEvent';
+import { EventStore } from '../../events/store/EventStore';
+import { AggregateRoot } from '../base/AggregateRoot';
 
 export abstract class BaseRepository<T extends AggregateRoot> {
     constructor(
