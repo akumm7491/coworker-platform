@@ -1,21 +1,26 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { DomainRepository } from '@coworker/shared-kernel';
 import { Task } from '../../domain/models/Task';
-import {
-  ITaskRepository,
-  TaskFilter,
-  TaskQueryOptions,
-} from '../../domain/repositories/ITaskRepository';
+import { TaskFilter, TaskQueryOptions } from '../../domain/repositories/ITaskRepository';
 
 @Injectable()
-export class TaskRepository extends DomainRepository<Task> implements ITaskRepository {
+export class TaskRepository {
   constructor(
     @InjectRepository(Task)
-    repository: Repository<Task>
-  ) {
-    super(repository);
+    private readonly repository: Repository<Task>
+  ) {}
+
+  async findById(id: string): Promise<Task | null> {
+    return this.repository.findOne({ where: { id } });
+  }
+
+  async save(entity: Task): Promise<Task> {
+    return this.repository.save(entity);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.repository.delete(id);
   }
 
   async findByFilter(filter: TaskFilter): Promise<Task[]> {
@@ -46,7 +51,6 @@ export class TaskRepository extends DomainRepository<Task> implements ITaskRepos
   async findAll(options: TaskQueryOptions): Promise<Task[]> {
     const queryBuilder = this.repository.createQueryBuilder('task');
 
-    // Apply filters
     if (options.status) {
       queryBuilder.andWhere('task.status = :status', { status: options.status });
     }
@@ -61,14 +65,7 @@ export class TaskRepository extends DomainRepository<Task> implements ITaskRepos
     if (options.labelId) {
       queryBuilder.andWhere(':labelId = ANY(task.labels)', { labelId: options.labelId });
     }
-    if (options.dueBefore) {
-      queryBuilder.andWhere('task.dueDate <= :dueBefore', { dueBefore: options.dueBefore });
-    }
-    if (options.dueAfter) {
-      queryBuilder.andWhere('task.dueDate >= :dueAfter', { dueAfter: options.dueAfter });
-    }
 
-    // Apply pagination
     if (options.skip) {
       queryBuilder.skip(options.skip);
     }
@@ -76,10 +73,9 @@ export class TaskRepository extends DomainRepository<Task> implements ITaskRepos
       queryBuilder.take(options.take);
     }
 
-    // Apply ordering
     if (options.orderBy) {
-      Object.entries(options.orderBy).forEach(([field, direction]) => {
-        queryBuilder.addOrderBy(`task.${field}`, direction);
+      Object.entries(options.orderBy).forEach(([key, value]) => {
+        queryBuilder.addOrderBy(`task.${key}`, value);
       });
     }
 
@@ -100,12 +96,6 @@ export class TaskRepository extends DomainRepository<Task> implements ITaskRepos
     }
     if (filter.labelId) {
       queryBuilder.andWhere(':labelId = ANY(task.labels)', { labelId: filter.labelId });
-    }
-    if (filter.dueBefore) {
-      queryBuilder.andWhere('task.dueDate <= :dueBefore', { dueBefore: filter.dueBefore });
-    }
-    if (filter.dueAfter) {
-      queryBuilder.andWhere('task.dueDate >= :dueAfter', { dueAfter: filter.dueAfter });
     }
 
     return queryBuilder.getCount();

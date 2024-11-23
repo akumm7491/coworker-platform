@@ -3,39 +3,42 @@ FROM node:20-alpine AS base
 WORKDIR /app
 RUN apk add --no-cache python3 make g++
 
-# Dependencies stage
-FROM base AS dependencies
-WORKDIR /app
+# Build shared kernel
+FROM base AS shared-kernel
+WORKDIR /app/shared-kernel
+COPY backend/packages/shared-kernel/package*.json ./
+COPY backend/packages/shared-kernel/tsconfig.json ./
+COPY backend/packages/shared-kernel/src ./src
+RUN npm install
+RUN npm run build
+RUN npm pack
 
-# Copy the entire monorepo structure
-COPY . .
-
-# Build and install shared kernel
-WORKDIR /app/backend/packages/shared-kernel
-RUN npm install --no-package-lock && npm run build
-
-# Build and install task service
-WORKDIR /app/backend/services/task-service
-RUN npm install --no-package-lock
+# Build task service
+FROM base AS builder
+WORKDIR /app/task-service
+# Copy shared kernel tarball
+COPY --from=shared-kernel /app/shared-kernel/coworker-shared-kernel-*.tgz ../
+# Copy task service files
+COPY backend/services/task-service/package*.json ./
+RUN npm install ../coworker-shared-kernel-*.tgz
+COPY backend/services/task-service/tsconfig.json ./
+COPY backend/services/task-service/src ./src
+RUN npm run build
 
 # Production stage
 FROM node:20-alpine AS production
 WORKDIR /app
 
-# Copy built files and dependencies
-COPY --from=dependencies /app/backend/packages/shared-kernel /app/backend/packages/shared-kernel
-COPY --from=dependencies /app/backend/services/task-service/dist ./dist
-COPY --from=dependencies /app/backend/services/task-service/package*.json ./
-COPY --from=dependencies /app/backend/services/task-service/.env* ./
-COPY --from=dependencies /app/backend/services/task-service/.npmrc ./
+# Copy production files
+COPY --from=shared-kernel /app/shared-kernel/coworker-shared-kernel-*.tgz ./
+COPY --from=builder /app/task-service/dist ./dist
+COPY --from=builder /app/task-service/package*.json ./
+COPY backend/services/task-service/.env* ./
 
 # Install production dependencies
 ENV NODE_ENV=production
-WORKDIR /app/backend/packages/shared-kernel
-RUN npm install --omit=dev --no-package-lock
-
-WORKDIR /app
-RUN npm install --omit=dev --no-package-lock
+RUN npm install coworker-shared-kernel-*.tgz --omit=dev && \
+    rm coworker-shared-kernel-*.tgz
 
 # Expose the port the app runs on
 EXPOSE 3001

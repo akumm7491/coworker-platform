@@ -1,18 +1,26 @@
-import { Entity, Column } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  BeforeInsert,
+} from 'typeorm';
 import { IsNotEmpty, IsUUID, IsEnum, IsOptional, IsDate, MinLength } from 'class-validator';
 import { TaskStatus, TaskPriority } from './TaskStatus';
+import { AggregateRoot } from '@nestjs/cqrs';
 import { randomUUID } from 'crypto';
 
 @Entity('tasks')
-export class Task {
-  @Column('uuid', { primary: true })
+export class Task extends AggregateRoot {
+  @PrimaryGeneratedColumn('uuid')
   @IsUUID()
-  id: string;
+  id!: string;
 
   @Column()
   @IsNotEmpty()
   @MinLength(3)
-  title: string;
+  title!: string;
 
   @Column('text', { nullable: true })
   description?: string;
@@ -23,7 +31,7 @@ export class Task {
     default: TaskStatus.TODO,
   })
   @IsEnum(TaskStatus)
-  status: TaskStatus;
+  status: TaskStatus = TaskStatus.TODO;
 
   @Column({
     type: 'enum',
@@ -31,39 +39,90 @@ export class Task {
     default: TaskPriority.MEDIUM,
   })
   @IsEnum(TaskPriority)
-  priority: TaskPriority;
+  priority: TaskPriority = TaskPriority.MEDIUM;
+
+  @Column('uuid')
+  @IsUUID()
+  createdById!: string;
 
   @Column('uuid', { nullable: true })
   @IsUUID()
   @IsOptional()
   assigneeId?: string;
 
-  @Column('uuid')
-  @IsUUID()
-  createdById: string;
-
-  @Column('timestamp with time zone')
-  @IsDate()
-  createdAt: Date;
-
   @Column('timestamp with time zone', { nullable: true })
   @IsDate()
   @IsOptional()
   dueDate?: Date;
 
-  @Column('timestamp with time zone', { nullable: true })
+  @Column('simple-array', { default: [] })
+  labels: string[] = [];
+
+  @CreateDateColumn()
   @IsDate()
-  @IsOptional()
-  completedAt?: Date;
+  createdAt!: Date;
 
-  @Column('simple-array', { nullable: true })
-  @IsUUID(undefined, { each: true })
-  @IsOptional()
-  labels?: string[];
+  @UpdateDateColumn()
+  @IsDate()
+  updatedAt!: Date;
 
-  constructor(props: {
+  @BeforeInsert()
+  generateId() {
+    if (!this.id) {
+      this.id = randomUUID();
+    }
+  }
+
+  constructor(params?: {
     title: string;
+    description?: string;
     createdById: string;
+    assigneeId?: string;
+    priority?: TaskPriority;
+    dueDate?: Date;
+    labels?: string[];
+  }) {
+    super();
+    if (params) {
+      this.title = params.title;
+      this.description = params.description;
+      this.createdById = params.createdById;
+      this.assigneeId = params.assigneeId;
+      this.priority = params.priority || TaskPriority.MEDIUM;
+      this.dueDate = params.dueDate;
+      this.labels = params.labels || [];
+      this.status = TaskStatus.TODO;
+    }
+  }
+
+  assignTo(assigneeId: string) {
+    this.assigneeId = assigneeId;
+  }
+
+  updateStatus(status: TaskStatus) {
+    this.status = status;
+  }
+
+  updatePriority(priority: TaskPriority) {
+    this.priority = priority;
+  }
+
+  updateDueDate(dueDate: Date) {
+    this.dueDate = dueDate;
+  }
+
+  addLabel(label: string) {
+    if (!this.labels.includes(label)) {
+      this.labels.push(label);
+    }
+  }
+
+  removeLabel(label: string) {
+    this.labels = this.labels.filter(l => l !== label);
+  }
+
+  update(params: {
+    title?: string;
     description?: string;
     status?: TaskStatus;
     priority?: TaskPriority;
@@ -71,97 +130,12 @@ export class Task {
     dueDate?: Date;
     labels?: string[];
   }) {
-    this.id = randomUUID();
-    this.title = props.title;
-    this.description = props.description;
-    this.status = props.status || TaskStatus.TODO;
-    this.priority = props.priority || TaskPriority.MEDIUM;
-    this.assigneeId = props.assigneeId;
-    this.createdById = props.createdById;
-    this.createdAt = new Date();
-    this.dueDate = props.dueDate;
-    this.labels = props.labels;
-  }
-
-  assign(assigneeId: string): void {
-    this.assigneeId = assigneeId;
-    if (this.status === TaskStatus.TODO) {
-      this.status = TaskStatus.IN_PROGRESS;
-    }
-  }
-
-  unassign(): void {
-    this.assigneeId = undefined;
-    if (this.status === TaskStatus.IN_PROGRESS) {
-      this.status = TaskStatus.TODO;
-    }
-  }
-
-  updateStatus(status: TaskStatus): void {
-    this.status = status;
-    if (status === TaskStatus.DONE) {
-      this.completedAt = new Date();
-    } else {
-      this.completedAt = undefined;
-    }
-  }
-
-  updatePriority(priority: TaskPriority): void {
-    this.priority = priority;
-  }
-
-  updateDueDate(dueDate?: Date): void {
-    this.dueDate = dueDate;
-  }
-
-  addLabel(labelId: string): void {
-    if (!this.labels) {
-      this.labels = [];
-    }
-    if (!this.labels.includes(labelId)) {
-      this.labels.push(labelId);
-    }
-  }
-
-  removeLabel(labelId: string): void {
-    if (this.labels) {
-      this.labels = this.labels.filter(id => id !== labelId);
-    }
-  }
-
-  update(updates: {
-    title?: string;
-    description?: string;
-    assigneeId?: string;
-    status?: TaskStatus;
-    priority?: TaskPriority;
-    dueDate?: Date;
-    labels?: string[];
-  }): void {
-    if (updates.title) {
-      this.title = updates.title;
-    }
-    if (updates.description !== undefined) {
-      this.description = updates.description;
-    }
-    if (updates.assigneeId !== undefined) {
-      if (updates.assigneeId) {
-        this.assign(updates.assigneeId);
-      } else {
-        this.unassign();
-      }
-    }
-    if (updates.status) {
-      this.updateStatus(updates.status);
-    }
-    if (updates.priority) {
-      this.updatePriority(updates.priority);
-    }
-    if (updates.dueDate !== undefined) {
-      this.updateDueDate(updates.dueDate);
-    }
-    if (updates.labels) {
-      this.labels = [...updates.labels];
-    }
+    if (params.title) this.title = params.title;
+    if (params.description !== undefined) this.description = params.description;
+    if (params.status) this.status = params.status;
+    if (params.priority) this.priority = params.priority;
+    if (params.assigneeId !== undefined) this.assigneeId = params.assigneeId;
+    if (params.dueDate !== undefined) this.dueDate = params.dueDate;
+    if (params.labels) this.labels = params.labels;
   }
 }
