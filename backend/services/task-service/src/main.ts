@@ -27,7 +27,7 @@ async function bootstrap() {
     .setTitle('Task Service API')
     .setDescription('API documentation for the Task Management Service')
     .setVersion('1.0.0')
-    .addTag('tasks')
+    .addTag('tasks', 'Task management operations')
     .addBearerAuth()
     .build();
 
@@ -35,14 +35,29 @@ async function bootstrap() {
   SwaggerModule.setup('swagger', app, document, {
     swaggerOptions: {
       persistAuthorization: true,
-      docExpansion: 'none',
+      docExpansion: 'list',
+      defaultModelsExpandDepth: 1,
+      defaultModelExpandDepth: 1,
       filter: true,
       showRequestDuration: true,
+      displayOperationId: false,
+      displayRequestDuration: true,
+      tagsSorter: 'alpha',
+      operationsSorter: 'alpha',
     },
-    customSiteTitle: 'Task Service API Documentation'
+    customSiteTitle: 'Task Service API Documentation',
+    customfavIcon: 'https://nestjs.com/img/logo_text.svg',
+    customJs: [
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.min.js',
+    ],
+    customCssUrl: [
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css',
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.min.css',
+    ],
   });
 
-  const port = process.env.PORT || 3001;
+  const port = process.env.PORT || 3455;
   await app.listen(port);
   console.log(`Task Service is running on port ${port}`);
   console.log(`Swagger documentation available at http://localhost:${port}/swagger`);
