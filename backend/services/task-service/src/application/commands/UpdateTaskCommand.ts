@@ -3,6 +3,17 @@ import { TaskStatus, TaskPriority } from '../../domain/models/TaskStatus';
 import { ICommand } from '@nestjs/cqrs';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+export interface UpdateTaskCommandProps {
+  taskId: string;
+  title?: string;
+  description?: string;
+  assigneeId?: string;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  dueDate?: Date;
+  labels?: string[];
+}
+
 export class UpdateTaskCommand implements ICommand {
   @ApiProperty({
     description: 'UUID of the task to update',
@@ -71,28 +82,15 @@ export class UpdateTaskCommand implements ICommand {
   @IsOptional()
   readonly labels?: string[];
 
-  constructor(
-    taskId: string,
-    updates?: {
-      title?: string;
-      description?: string;
-      assigneeId?: string;
-      status?: TaskStatus;
-      priority?: TaskPriority;
-      dueDate?: Date;
-      labels?: string[];
-    }
-  ) {
-    this.taskId = taskId;
-    if (updates) {
-      this.title = updates.title;
-      this.description = updates.description;
-      this.assigneeId = updates.assigneeId;
-      this.status = updates.status;
-      this.priority = updates.priority;
-      this.dueDate = updates.dueDate;
-      this.labels = updates.labels;
-    }
+  constructor(props: UpdateTaskCommandProps) {
+    this.taskId = props.taskId;
+    this.title = props.title;
+    this.description = props.description;
+    this.assigneeId = props.assigneeId;
+    this.status = props.status;
+    this.priority = props.priority;
+    this.dueDate = props.dueDate;
+    this.labels = props.labels;
   }
 
   public static getCommandName(): string {

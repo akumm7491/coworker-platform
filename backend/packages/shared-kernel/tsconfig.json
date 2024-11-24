@@ -19,6 +19,7 @@
     "strictBindCallApply": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
+    "composite": true,
     "lib": ["ES2021", "DOM"],
     "paths": {
       "@domain/*": ["src/domain/*"],

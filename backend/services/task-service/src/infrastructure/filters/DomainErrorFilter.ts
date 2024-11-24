@@ -1,6 +1,7 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpStatus } from '@nestjs/common';
 import { Response } from 'express';
 import { DomainError, ErrorCategory } from '@coworker/shared-kernel';
+import { TaskNotFoundError } from '../../domain/errors/TaskNotFoundError';
 
 @Catch(DomainError)
 export class DomainErrorFilter implements ExceptionFilter {
@@ -9,7 +10,10 @@ export class DomainErrorFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    if (exception.category === ErrorCategory.Domain) {
+
+    if (exception instanceof TaskNotFoundError) {
+      status = HttpStatus.NOT_FOUND;
+    } else if (exception.category === ErrorCategory.Domain) {
       status = HttpStatus.BAD_REQUEST;
     }
 

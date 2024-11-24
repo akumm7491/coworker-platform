@@ -22,6 +22,9 @@ import {
 } from './application/handlers/TaskEventHandlers';
 import { TaskController } from './interfaces/http/TaskController';
 import { TaskRepositoryModule } from './infrastructure/persistence/TaskRepositoryModule';
+import { TaskNotFoundFilter } from './infrastructure/filters/TaskNotFoundFilter';
+import { APP_FILTER } from '@nestjs/core';
+import { DomainErrorFilter } from './infrastructure/filters/DomainErrorFilter';
 
 const CommandHandlers = [
   CreateTaskCommandHandler,
@@ -45,16 +48,15 @@ const EventHandlers = [
   ],
   controllers: [TaskController],
   providers: [
-    {
-      provide: MessageBus,
-      useFactory: () => {
-        const messageBus = new MessageBus();
-        return messageBus;
-      },
-    },
     ...CommandHandlers,
     ...QueryHandlers,
     ...EventHandlers,
+    {
+      provide: MessageBus,
+      useFactory: () => new MessageBus(),
+    },
+    { provide: APP_FILTER, useClass: DomainErrorFilter },
+    { provide: APP_FILTER, useClass: TaskNotFoundFilter },
   ],
 })
 export class TaskModule {}

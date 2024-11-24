@@ -10,8 +10,7 @@ import { TASK_REPOSITORY } from '../../constants/injection-tokens';
     TaskRepository,
     {
       provide: TASK_REPOSITORY,
-      useFactory: (repository: TaskRepository) => repository,
-      inject: [TaskRepository],
+      useClass: TaskRepository,
     },
   ],
   exports: [TASK_REPOSITORY, TaskRepository],

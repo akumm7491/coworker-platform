@@ -9,6 +9,7 @@ import { ListTasksQuery } from '../../application/queries/ListTasksQuery';
 import { ValidationPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { TaskStatus, TaskPriority } from '../../domain/models/TaskStatus';
+import { TaskNotFoundError } from '../../domain/errors/TaskNotFoundError';
 
 @Controller('tasks')
 @ApiTags('Tasks')
@@ -30,14 +31,14 @@ export class TaskController {
     examples: {
       example1: {
         value: {
-          title: "Implement login feature",
-          description: "Add authentication endpoints",
-          createdById: "00000000-0000-0000-0000-000000000000",
-          priority: "HIGH",
-          labels: ["auth", "api"]
-        }
-      }
-    }
+          title: 'Implement login feature',
+          description: 'Add authentication endpoints',
+          createdById: '00000000-0000-0000-0000-000000000000',
+          priority: 'HIGH',
+          labels: ['auth', 'api'],
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 201,
@@ -48,7 +49,16 @@ export class TaskController {
     status: 400,
     description: 'Invalid input - Please check the request payload',
   })
-  async createTask(@Body(ValidationPipe) command: CreateTaskCommand): Promise<Task> {
+  async createTask(@Body(ValidationPipe) createTaskDto: CreateTaskCommand): Promise<Task> {
+    const command = new CreateTaskCommand(
+      createTaskDto.title,
+      createTaskDto.createdById,
+      createTaskDto.description,
+      createTaskDto.assigneeId,
+      createTaskDto.priority,
+      createTaskDto.dueDate,
+      createTaskDto.labels
+    );
     return this.commandBus.execute(command);
   }
 
@@ -63,21 +73,21 @@ export class TaskController {
     required: false,
     type: String,
     description: 'Filter tasks by assignee ID',
-    example: '00000000-0000-0000-0000-000000000000'
+    example: '00000000-0000-0000-0000-000000000000',
   })
   @ApiQuery({
     name: 'status',
     required: false,
     enum: TaskStatus,
     description: 'Filter tasks by status',
-    example: 'TODO'
+    example: 'TODO',
   })
   @ApiQuery({
     name: 'priority',
     required: false,
     enum: TaskPriority,
     description: 'Filter tasks by priority',
-    example: 'HIGH'
+    example: 'HIGH',
   })
   @ApiResponse({
     status: 200,
@@ -87,30 +97,32 @@ export class TaskController {
       properties: {
         tasks: {
           type: 'array',
-          items: { $ref: '#/components/schemas/Task' }
+          items: { $ref: '#/components/schemas/Task' },
         },
         total: {
           type: 'number',
           example: 10,
-          description: 'Total number of tasks matching the filter criteria'
-        }
+          description: 'Total number of tasks matching the filter criteria',
+        },
       },
       example: {
-        tasks: [{
-          id: "00000000-0000-0000-0000-000000000000",
-          title: "Implement login feature",
-          description: "Add authentication endpoints",
-          status: "TODO",
-          priority: "HIGH",
-          createdById: "00000000-0000-0000-0000-000000000000",
-          assigneeId: "00000000-0000-0000-0000-000000000001",
-          labels: ["auth", "api"],
-          createdAt: "2024-01-01T00:00:00.000Z",
-          updatedAt: "2024-01-01T00:00:00.000Z"
-        }],
-        total: 1
-      }
-    }
+        tasks: [
+          {
+            id: '00000000-0000-0000-0000-000000000000',
+            title: 'Implement login feature',
+            description: 'Add authentication endpoints',
+            status: 'TODO',
+            priority: 'HIGH',
+            createdById: '00000000-0000-0000-0000-000000000000',
+            assigneeId: '00000000-0000-0000-0000-000000000001',
+            labels: ['auth', 'api'],
+            createdAt: '2024-01-01T00:00:00.000Z',
+            updatedAt: '2024-01-01T00:00:00.000Z',
+          },
+        ],
+        total: 1,
+      },
+    },
   })
   async getTasks(@Query() query: ListTasksQuery): Promise<{ tasks: Task[]; total: number }> {
     return this.queryBus.execute(new ListTasksQuery(query));
@@ -151,40 +163,23 @@ export class TaskController {
     name: 'taskId',
     type: 'string',
     description: 'UUID of the task to update',
-    example: '00000000-0000-0000-0000-000000000000',
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @ApiBody({
     type: UpdateTaskCommand,
     description: 'Task update payload',
     examples: {
-      status: {
-        summary: 'Update task status',
-        description: 'Example of updating only the task status',
+      example1: {
         value: {
-          status: "IN_PROGRESS"
-        }
+          title: 'Updated Task Title',
+          description: 'Updated task description',
+          status: TaskStatus.IN_PROGRESS,
+          priority: TaskPriority.HIGH,
+          assigneeId: '00000000-0000-0000-0000-000000000001',
+          labels: ['updated', 'important'],
+        },
       },
-      assignee: {
-        summary: 'Update task assignee',
-        description: 'Example of updating the task assignee',
-        value: {
-          assigneeId: "00000000-0000-0000-0000-000000000001"
-        }
-      },
-      full: {
-        summary: 'Update multiple fields',
-        description: 'Example of updating multiple task fields at once',
-        value: {
-          title: "Updated Task Title",
-          description: "Updated task description with more details",
-          status: "IN_PROGRESS",
-          priority: "HIGH",
-          assigneeId: "00000000-0000-0000-0000-000000000001",
-          dueDate: "2024-02-01T00:00:00.000Z",
-          labels: ["updated", "important"]
-        }
-      }
-    }
+    },
   })
   @ApiResponse({
     status: 200,
@@ -201,22 +196,26 @@ export class TaskController {
   })
   async updateTask(
     @Param('taskId') taskId: string,
-    @Body(ValidationPipe) updates: Partial<UpdateTaskCommand>
+    @Body(ValidationPipe) updateTaskDto: Partial<UpdateTaskCommand>
   ): Promise<Task> {
-    return this.commandBus.execute(new UpdateTaskCommand(taskId, updates));
+    const command = new UpdateTaskCommand({
+      taskId,
+      ...updateTaskDto,
+    });
+    return this.commandBus.execute(command);
   }
 
   @Delete(':taskId')
   @ApiOperation({
     summary: 'Delete task',
-    description: 'Permanently deletes a task',
+    description: 'Deletes a task by its ID',
     operationId: 'deleteTask',
   })
   @ApiParam({
     name: 'taskId',
-    type: String,
+    type: 'string',
     description: 'UUID of the task to delete',
-    example: '00000000-0000-0000-0000-000000000000'
+    example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @ApiBody({
     schema: {
@@ -227,18 +226,10 @@ export class TaskController {
           type: 'string',
           format: 'uuid',
           description: 'UUID of the user deleting the task',
-          example: '00000000-0000-0000-0000-000000000000'
-        }
-      }
+          example: '00000000-0000-0000-0000-000000000000',
+        },
+      },
     },
-    examples: {
-      example1: {
-        summary: 'Delete task payload',
-        value: {
-          deletedById: "00000000-0000-0000-0000-000000000000"
-        }
-      }
-    }
   })
   @ApiResponse({
     status: 200,
@@ -252,6 +243,7 @@ export class TaskController {
     @Param('taskId') taskId: string,
     @Body('deletedById') deletedById: string
   ): Promise<void> {
-    await this.commandBus.execute(new DeleteTaskCommand(taskId, deletedById));
+    const command = new DeleteTaskCommand(taskId, deletedById);
+    return this.commandBus.execute(command);
   }
 }

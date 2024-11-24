@@ -13,11 +13,18 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "resolveJsonModule": true,
+    "allowJs": true,
     "baseUrl": ".",
     "paths": {
-      "@backend/*": ["node_modules/@coworker/*"]
+      "@backend/*": ["node_modules/@coworker/*"],
+      "@shared-kernel/*": ["../../packages/shared-kernel/src/*"]
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "test"]
+  "exclude": ["node_modules", "dist", "test"],
+  "references": [
+    {
+      "path": "../../packages/shared-kernel"
+    }
+  ]
 }

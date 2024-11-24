@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler, EventBus } from '@nestjs/cqrs';
 import { CreateTaskCommand } from '../commands/CreateTaskCommand';
 import { UpdateTaskCommand } from '../commands/UpdateTaskCommand';
@@ -11,10 +11,13 @@ import {
   TaskDeletedEvent,
 } from '../../domain/events/TaskEvents';
 import { TASK_REPOSITORY } from '../../constants/injection-tokens';
+import { TaskNotFoundError } from '../../domain/errors/TaskNotFoundError';
 
 @Injectable()
 @CommandHandler(CreateTaskCommand)
 export class CreateTaskCommandHandler implements ICommandHandler<CreateTaskCommand> {
+  private readonly logger = new Logger(CreateTaskCommandHandler.name);
+
   constructor(
     private readonly eventBus: EventBus,
     @Inject(TASK_REPOSITORY)
@@ -22,33 +25,44 @@ export class CreateTaskCommandHandler implements ICommandHandler<CreateTaskComma
   ) {}
 
   async execute(command: CreateTaskCommand): Promise<Task> {
-    const task = new Task({
-      title: command.title,
-      description: command.description,
-      createdById: command.createdById,
-      assigneeId: command.assigneeId,
-      priority: command.priority,
-      dueDate: command.dueDate,
-      labels: command.labels,
-    });
+    this.logger.debug(`Creating task with command: ${JSON.stringify(command)}`);
+    try {
+      const task = new Task({
+        title: command.title,
+        description: command.description,
+        createdById: command.createdById,
+        assigneeId: command.assigneeId,
+        priority: command.priority,
+        dueDate: command.dueDate,
+        labels: command.labels,
+      });
 
-    const savedTask = await this.taskRepository.save(task);
-    await this.eventBus.publish(
-      new TaskCreatedEvent(
+      const savedTask = await this.taskRepository.save(task);
+      this.logger.debug(`Task saved successfully: ${JSON.stringify(savedTask)}`);
+
+      const event = new TaskCreatedEvent(
         savedTask.id,
         savedTask.title,
         savedTask.createdById,
         savedTask.assigneeId
-      )
-    );
+      );
+      await this.eventBus.publish(event);
 
-    return savedTask;
+      return savedTask;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error creating task: ${errorMessage}`, errorStack);
+      throw error;
+    }
   }
 }
 
 @Injectable()
 @CommandHandler(UpdateTaskCommand)
 export class UpdateTaskCommandHandler implements ICommandHandler<UpdateTaskCommand> {
+  private readonly logger = new Logger(UpdateTaskCommandHandler.name);
+
   constructor(
     private readonly eventBus: EventBus,
     @Inject(TASK_REPOSITORY)
@@ -56,38 +70,44 @@ export class UpdateTaskCommandHandler implements ICommandHandler<UpdateTaskComma
   ) {}
 
   async execute(command: UpdateTaskCommand): Promise<Task> {
-    console.log('Updating task with ID:', command.taskId);
-    console.log('Update payload:', command);
-    const task = await this.taskRepository.findById(command.taskId);
-    if (!task) {
-      throw new Error(`Task with id ${command.taskId} not found`);
-    }
-    console.log('Found task:', task);
-
-    task.update({
-      title: command.title,
-      description: command.description,
-      assigneeId: command.assigneeId,
-      priority: command.priority,
-      dueDate: command.dueDate,
-      labels: command.labels,
-      status: command.status,
-    });
-    console.log('Task after update:', task);
-
+    this.logger.debug(`Updating task with command: ${JSON.stringify(command)}`);
     try {
+      const task = await this.taskRepository.findById(command.taskId);
+      if (!task) {
+        const error = new TaskNotFoundError(command.taskId);
+        this.logger.error(error.message);
+        throw error;
+      }
+
+      task.update({
+        title: command.title,
+        description: command.description,
+        status: command.status,
+        priority: command.priority,
+        assigneeId: command.assigneeId,
+        dueDate: command.dueDate,
+        labels: command.labels,
+      });
+
       const updatedTask = await this.taskRepository.save(task);
-      console.log('Task saved successfully:', updatedTask);
-      await this.eventBus.publish(
-        new TaskUpdatedEvent(updatedTask.id, {
-          title: updatedTask.title,
-          assigneeId: updatedTask.assigneeId,
-          status: updatedTask.status,
-        })
-      );
+      this.logger.debug(`Task updated successfully: ${JSON.stringify(updatedTask)}`);
+
+      const event = new TaskUpdatedEvent(updatedTask.id, {
+        title: updatedTask.title,
+        description: updatedTask.description,
+        status: updatedTask.status,
+        priority: updatedTask.priority,
+        assigneeId: updatedTask.assigneeId,
+        dueDate: updatedTask.dueDate,
+        labels: updatedTask.labels,
+      });
+      await this.eventBus.publish(event);
+
       return updatedTask;
-    } catch (error) {
-      console.error('Error saving task:', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error updating task: ${errorMessage}`, errorStack);
       throw error;
     }
   }
@@ -96,6 +116,8 @@ export class UpdateTaskCommandHandler implements ICommandHandler<UpdateTaskComma
 @Injectable()
 @CommandHandler(DeleteTaskCommand)
 export class DeleteTaskCommandHandler implements ICommandHandler<DeleteTaskCommand> {
+  private readonly logger = new Logger(DeleteTaskCommandHandler.name);
+
   constructor(
     private readonly eventBus: EventBus,
     @Inject(TASK_REPOSITORY)
@@ -103,14 +125,25 @@ export class DeleteTaskCommandHandler implements ICommandHandler<DeleteTaskComma
   ) {}
 
   async execute(command: DeleteTaskCommand): Promise<void> {
-    const task = await this.taskRepository.findById(command.taskId);
-    if (!task) {
-      throw new Error(`Task with id ${command.taskId} not found`);
-    }
+    this.logger.debug(`Deleting task with command: ${JSON.stringify(command)}`);
+    try {
+      const task = await this.taskRepository.findById(command.taskId);
+      if (!task) {
+        const error = new TaskNotFoundError(command.taskId);
+        this.logger.error(error.message);
+        throw error;
+      }
 
-    await this.taskRepository.delete(command.taskId);
-    await this.eventBus.publish(
-      new TaskDeletedEvent(command.taskId, new Date(), command.deletedById)
-    );
+      await this.taskRepository.delete(command.taskId);
+      this.logger.debug(`Task deleted successfully: ${command.taskId}`);
+
+      const event = new TaskDeletedEvent(command.taskId, new Date(), command.deletedById);
+      await this.eventBus.publish(event);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error deleting task: ${errorMessage}`, errorStack);
+      throw error;
+    }
   }
 }

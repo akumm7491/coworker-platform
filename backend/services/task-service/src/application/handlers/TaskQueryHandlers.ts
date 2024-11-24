@@ -1,11 +1,11 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
+import { Injectable, Inject } from '@nestjs/common';
 import { GetTaskQuery } from '../queries/GetTaskQuery';
 import { ListTasksQuery } from '../queries/ListTasksQuery';
 import { Task } from '../../domain/models/Task';
-import { ITaskRepository } from '../../domain/repositories/ITaskRepository';
-import { Injectable, Inject } from '@nestjs/common';
+import { ITaskRepository, TaskQueryOptions } from '../../domain/repositories/ITaskRepository';
 import { TASK_REPOSITORY } from '../../constants/injection-tokens';
-import { DomainError, ErrorSeverity } from '@coworker/shared-kernel';
+import { TaskNotFoundError } from '../../domain/errors/TaskNotFoundError';
 
 @Injectable()
 @QueryHandler(GetTaskQuery)
@@ -18,7 +18,7 @@ export class GetTaskQueryHandler implements IQueryHandler<GetTaskQuery> {
   async execute(query: GetTaskQuery): Promise<Task> {
     const task = await this.taskRepository.findById(query.taskId);
     if (!task) {
-      throw new DomainError(`Task with id ${query.taskId} not found`, ErrorSeverity.Medium);
+      throw new TaskNotFoundError(query.taskId);
     }
     return task;
   }
@@ -33,24 +33,17 @@ export class ListTasksQueryHandler implements IQueryHandler<ListTasksQuery> {
   ) {}
 
   async execute(query: ListTasksQuery): Promise<{ tasks: Task[]; total: number }> {
-    const { assigneeId, status, priority, labels, page, pageSize } = query;
-
-    const filters = {
-      ...(assigneeId && { assigneeId }),
-      ...(status && { status }),
-      ...(priority && { priority }),
-      ...(labels?.length && { labels }),
+    const queryOptions: TaskQueryOptions = {
+      status: query.status,
+      assigneeId: query.assigneeId,
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
+      orderBy: { createdAt: 'DESC' },
     };
-
     const [tasks, total] = await Promise.all([
-      this.taskRepository.findAll({
-        ...filters,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      this.taskRepository.count(filters),
+      this.taskRepository.findAll(queryOptions),
+      this.taskRepository.count(queryOptions),
     ]);
-
     return { tasks, total };
   }
 }
