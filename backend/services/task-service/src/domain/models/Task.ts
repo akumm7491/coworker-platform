@@ -10,21 +10,30 @@ import { IsNotEmpty, IsUUID, IsEnum, IsOptional, IsDate, MinLength } from 'class
 import { TaskStatus, TaskPriority } from './TaskStatus';
 import { AggregateRoot } from '@nestjs/cqrs';
 import { randomUUID } from 'crypto';
+import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('tasks')
 export class Task extends AggregateRoot {
+  @ApiProperty({ description: 'Unique identifier of the task' })
   @PrimaryGeneratedColumn('uuid')
   @IsUUID()
   id!: string;
 
+  @ApiProperty({ description: 'Title of the task', minLength: 3 })
   @Column()
   @IsNotEmpty()
   @MinLength(3)
   title!: string;
 
+  @ApiProperty({ description: 'Description of the task', required: false })
   @Column('text', { nullable: true })
   description?: string;
 
+  @ApiProperty({
+    description: 'Current status of the task',
+    enum: TaskStatus,
+    default: TaskStatus.TODO,
+  })
   @Column({
     type: 'enum',
     enum: TaskStatus,
@@ -33,6 +42,11 @@ export class Task extends AggregateRoot {
   @IsEnum(TaskStatus)
   status: TaskStatus = TaskStatus.TODO;
 
+  @ApiProperty({
+    description: 'Priority level of the task',
+    enum: TaskPriority,
+    default: TaskPriority.MEDIUM,
+  })
   @Column({
     type: 'enum',
     enum: TaskPriority,
@@ -41,27 +55,37 @@ export class Task extends AggregateRoot {
   @IsEnum(TaskPriority)
   priority: TaskPriority = TaskPriority.MEDIUM;
 
+  @ApiProperty({ description: 'ID of the user who created the task' })
   @Column('uuid')
   @IsUUID()
   createdById!: string;
 
+  @ApiProperty({ description: 'ID of the user assigned to the task', required: false })
   @Column('uuid', { nullable: true })
   @IsUUID()
   @IsOptional()
   assigneeId?: string;
 
+  @ApiProperty({ description: 'Due date for the task', required: false })
   @Column('timestamp with time zone', { nullable: true })
   @IsDate()
   @IsOptional()
   dueDate?: Date;
 
+  @ApiProperty({
+    description: 'Array of labels/tags associated with the task',
+    type: [String],
+    default: [],
+  })
   @Column('simple-array', { default: [] })
   labels: string[] = [];
 
+  @ApiProperty({ description: 'Creation timestamp' })
   @CreateDateColumn()
   @IsDate()
   createdAt!: Date;
 
+  @ApiProperty({ description: 'Last update timestamp' })
   @UpdateDateColumn()
   @IsDate()
   updatedAt!: Date;

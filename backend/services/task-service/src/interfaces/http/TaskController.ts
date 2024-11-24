@@ -1,34 +1,16 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
-  Body,
-  Param,
-  Query,
-  ValidationPipe,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { Task } from '../../domain/models/Task';
 import { CreateTaskCommand } from '../../application/commands/CreateTaskCommand';
 import { UpdateTaskCommand } from '../../application/commands/UpdateTaskCommand';
 import { DeleteTaskCommand } from '../../application/commands/DeleteTaskCommand';
 import { GetTaskQuery } from '../../application/queries/GetTaskQuery';
 import { ListTasksQuery } from '../../application/queries/ListTasksQuery';
-import { Task } from '../../domain/models/Task';
-import { TaskStatus, TaskPriority } from '../../domain/models/TaskStatus';
-
-interface UpdateTaskDto {
-  title?: string;
-  description?: string;
-  assigneeId?: string;
-  status?: TaskStatus;
-  priority?: TaskPriority;
-  dueDate?: Date;
-  labels?: string[];
-}
+import { ValidationPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 
 @Controller('tasks')
+@ApiTags('tasks')
 export class TaskController {
   constructor(
     private readonly commandBus: CommandBus,
@@ -36,51 +18,57 @@ export class TaskController {
   ) {}
 
   @Post()
+  @ApiOperation({ summary: 'Create a new task' })
+  @ApiBody({ type: CreateTaskCommand })
+  @ApiResponse({ status: 201, description: 'Task created successfully', type: Task })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
   async createTask(@Body(ValidationPipe) command: CreateTaskCommand): Promise<Task> {
     return this.commandBus.execute(command);
   }
 
-  @Put(':taskId')
-  async updateTask(
-    @Param('taskId') taskId: string,
-    @Body(ValidationPipe) updates: UpdateTaskDto
-  ): Promise<Task> {
-    const command = new UpdateTaskCommand(taskId, updates);
-    console.log('Update command:', JSON.stringify(command));
-    return this.commandBus.execute(command);
+  @Get()
+  @ApiOperation({ summary: 'Get all tasks' })
+  @ApiQuery({ name: 'assigneeId', required: false })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'priority', required: false })
+  @ApiResponse({ status: 200, description: 'List of tasks retrieved successfully', type: [Task] })
+  async getTasks(@Query() query: ListTasksQuery): Promise<{ tasks: Task[]; total: number }> {
+    return this.queryBus.execute(new ListTasksQuery(query));
   }
 
   @Get(':taskId')
+  @ApiOperation({ summary: 'Get a specific task' })
+  @ApiParam({ name: 'taskId', type: 'string' })
+  @ApiResponse({ status: 200, description: 'Task retrieved successfully', type: Task })
+  @ApiResponse({ status: 404, description: 'Task not found' })
   async getTask(@Param('taskId') taskId: string): Promise<Task> {
     return this.queryBus.execute(new GetTaskQuery(taskId));
   }
 
-  @Get()
-  async listTasks(
-    @Query('status') status?: TaskStatus,
-    @Query('assigneeId') assigneeId?: string,
-    @Query('priority') priority?: TaskPriority,
-    @Query('labels') labels?: string[],
-    @Query('page') page = 1,
-    @Query('pageSize') pageSize = 20
-  ): Promise<{ tasks: Task[]; total: number }> {
-    const query = new ListTasksQuery({
-      status,
-      assigneeId,
-      priority,
-      labels,
-      page,
-      pageSize,
-    });
-    return this.queryBus.execute(query);
+  @Put(':taskId')
+  @ApiOperation({ summary: 'Update a task' })
+  @ApiParam({ name: 'taskId', type: 'string' })
+  @ApiBody({ type: UpdateTaskCommand })
+  @ApiResponse({ status: 200, description: 'Task updated successfully', type: Task })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  @ApiResponse({ status: 400, description: 'Invalid input' })
+  async updateTask(
+    @Param('taskId') taskId: string,
+    @Body(ValidationPipe) updates: UpdateTaskCommand
+  ): Promise<Task> {
+    return this.commandBus.execute(new UpdateTaskCommand(taskId, updates));
   }
 
   @Delete(':taskId')
+  @ApiOperation({ summary: 'Delete a task' })
+  @ApiParam({ name: 'taskId', type: 'string' })
+  @ApiParam({ name: 'deletedById', type: 'string' })
+  @ApiResponse({ status: 204, description: 'Task deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
   async deleteTask(
     @Param('taskId') taskId: string,
-    @Body('deletedById') deletedById = '123e4567-e89b-12d3-a456-426614174000'
+    @Body('deletedById') deletedById: string
   ): Promise<void> {
-    const command = new DeleteTaskCommand(taskId, deletedById);
-    await this.commandBus.execute(command);
+    await this.commandBus.execute(new DeleteTaskCommand(taskId, deletedById));
   }
 }
