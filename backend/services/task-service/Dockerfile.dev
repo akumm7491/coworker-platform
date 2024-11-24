@@ -5,21 +5,29 @@ WORKDIR /app
 # Install build dependencies
 RUN apk add --no-cache python3 make g++
 
-# Copy package files
-COPY backend/services/shared-kernel/package*.json ./backend/services/shared-kernel/
-COPY backend/services/task-service/package*.json ./backend/services/task-service/
-
-# Install dependencies
+# Build shared kernel first
 WORKDIR /app/backend/services/shared-kernel
+COPY backend/services/shared-kernel/package*.json ./
+COPY backend/services/shared-kernel/tsconfig.json ./
+COPY backend/services/shared-kernel/src ./src
 RUN npm install
+RUN npm run build
+RUN npm pack
 
+# Build task service
 WORKDIR /app/backend/services/task-service
+# Copy shared kernel tarball
+COPY --from=0 /app/backend/services/shared-kernel/coworker-shared-kernel-*.tgz ../
+# Copy task service files
+COPY backend/services/task-service/package*.json ./
+# Remove @coworker/shared-kernel from package.json dependencies temporarily
+RUN sed -i 's/"@coworker\/shared-kernel": ".*",//' package.json
+# Install dependencies excluding shared-kernel
 RUN npm install
+# Install shared-kernel from local tarball
+RUN npm install ../coworker-shared-kernel-*.tgz
 
 # Copy source code
-COPY backend/services/shared-kernel/tsconfig.json /app/backend/services/shared-kernel/
-COPY backend/services/shared-kernel/src /app/backend/services/shared-kernel/src
-
 COPY backend/services/task-service/tsconfig.json ./
 COPY backend/services/task-service/src ./src
 

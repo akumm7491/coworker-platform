@@ -52,8 +52,8 @@ services:
 
   task-service:
     build:
-      context: ./backend
-      dockerfile: services/task-service/Dockerfile.dev
+      context: .
+      dockerfile: backend/services/task-service/Dockerfile.dev
     ports:
       - "3455:3455"
     environment:
@@ -64,7 +64,7 @@ services:
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
     volumes:
       - ./backend/services/task-service/src:/app/backend/services/task-service/src
-      - ./backend/services/shared-kernel/src:/app/backend/services/shared-kernel/src
+      - ./backend/packages/shared-kernel/src:/app/backend/services/shared-kernel/src
     networks:
       - app-network
     depends_on:

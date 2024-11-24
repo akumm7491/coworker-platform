@@ -1,11 +1,32 @@
-import { Controller, Get, Post, Put, Body, Param, Query, ValidationPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  ValidationPipe,
+} from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { CreateTaskCommand } from '../../application/commands/CreateTaskCommand';
 import { UpdateTaskCommand } from '../../application/commands/UpdateTaskCommand';
+import { DeleteTaskCommand } from '../../application/commands/DeleteTaskCommand';
 import { GetTaskQuery } from '../../application/queries/GetTaskQuery';
 import { ListTasksQuery } from '../../application/queries/ListTasksQuery';
 import { Task } from '../../domain/models/Task';
 import { TaskStatus, TaskPriority } from '../../domain/models/TaskStatus';
+
+interface UpdateTaskDto {
+  title?: string;
+  description?: string;
+  assigneeId?: string;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  dueDate?: Date;
+  labels?: string[];
+}
 
 @Controller('tasks')
 export class TaskController {
@@ -22,9 +43,10 @@ export class TaskController {
   @Put(':taskId')
   async updateTask(
     @Param('taskId') taskId: string,
-    @Body(ValidationPipe) updates: Omit<UpdateTaskCommand, 'taskId'>
+    @Body(ValidationPipe) updates: UpdateTaskDto
   ): Promise<Task> {
-    const command = { taskId, ...updates } as UpdateTaskCommand;
+    const command = new UpdateTaskCommand(taskId, updates);
+    console.log('Update command:', JSON.stringify(command));
     return this.commandBus.execute(command);
   }
 
@@ -51,5 +73,14 @@ export class TaskController {
       pageSize,
     });
     return this.queryBus.execute(query);
+  }
+
+  @Delete(':taskId')
+  async deleteTask(
+    @Param('taskId') taskId: string,
+    @Body('deletedById') deletedById = '123e4567-e89b-12d3-a456-426614174000'
+  ): Promise<void> {
+    const command = new DeleteTaskCommand(taskId, deletedById);
+    await this.commandBus.execute(command);
   }
 }

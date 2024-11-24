@@ -8,7 +8,7 @@ export class TaskCreatedEvent extends DomainEvent {
     public readonly createdById: string,
     public readonly assigneeId?: string
   ) {
-    super('TaskCreated', taskId);
+    super('task.created', taskId);
   }
 }
 
@@ -18,7 +18,7 @@ export class TaskAssignedEvent extends DomainEvent {
     public readonly assigneeId: string,
     public readonly previousAssigneeId?: string
   ) {
-    super('TaskAssigned', taskId);
+    super('task.assigned', taskId);
   }
 }
 
@@ -28,7 +28,7 @@ export class TaskStatusChangedEvent extends DomainEvent {
     public readonly newStatus: TaskStatus,
     public readonly previousStatus: TaskStatus
   ) {
-    super('TaskStatusChanged', taskId);
+    super('task.status_changed', taskId);
   }
 }
 
@@ -38,7 +38,7 @@ export class TaskPriorityChangedEvent extends DomainEvent {
     public readonly newPriority: TaskPriority,
     public readonly previousPriority: TaskPriority
   ) {
-    super('TaskPriorityChanged', taskId);
+    super('task.priority_changed', taskId);
   }
 }
 
@@ -48,7 +48,7 @@ export class TaskDueDateChangedEvent extends DomainEvent {
     public readonly newDueDate?: Date,
     public readonly previousDueDate?: Date
   ) {
-    super('TaskDueDateChanged', taskId);
+    super('task.due_date_changed', taskId);
   }
 }
 
@@ -58,7 +58,7 @@ export class TaskCompletedEvent extends DomainEvent {
     public readonly completedAt: Date,
     public readonly completedById: string
   ) {
-    super('TaskCompleted', taskId);
+    super('task.completed', taskId);
   }
 }
 
@@ -75,6 +75,16 @@ export class TaskUpdatedEvent extends DomainEvent {
       labels?: string[];
     }
   ) {
-    super('TaskUpdated', taskId);
+    super('task.updated', taskId);
+  }
+}
+
+export class TaskDeletedEvent extends DomainEvent {
+  constructor(
+    public readonly taskId: string,
+    public readonly deletedAt: Date,
+    public readonly deletedById: string
+  ) {
+    super('task.deleted', taskId);
   }
 }

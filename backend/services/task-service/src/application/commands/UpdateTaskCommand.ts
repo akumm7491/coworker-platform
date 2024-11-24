@@ -1,7 +1,8 @@
 import { IsNotEmpty, IsUUID, IsOptional, IsEnum, IsDate, MinLength } from 'class-validator';
 import { TaskStatus, TaskPriority } from '../../domain/models/TaskStatus';
+import { ICommand } from '@nestjs/cqrs';
 
-export class UpdateTaskCommand {
+export class UpdateTaskCommand implements ICommand {
   @IsNotEmpty()
   @IsUUID()
   readonly taskId: string;
@@ -34,7 +35,7 @@ export class UpdateTaskCommand {
 
   constructor(
     taskId: string,
-    updates: {
+    updates?: {
       title?: string;
       description?: string;
       assigneeId?: string;
@@ -45,6 +46,18 @@ export class UpdateTaskCommand {
     }
   ) {
     this.taskId = taskId;
-    Object.assign(this, updates);
+    if (updates) {
+      this.title = updates.title;
+      this.description = updates.description;
+      this.assigneeId = updates.assigneeId;
+      this.status = updates.status;
+      this.priority = updates.priority;
+      this.dueDate = updates.dueDate;
+      this.labels = updates.labels;
+    }
+  }
+
+  public static getCommandName(): string {
+    return UpdateTaskCommand.name;
   }
 }

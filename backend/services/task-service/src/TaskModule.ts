@@ -8,6 +8,7 @@ import { Task } from './domain/models/Task';
 import {
   CreateTaskCommandHandler,
   UpdateTaskCommandHandler,
+  DeleteTaskCommandHandler,
 } from './application/handlers/TaskCommandHandlers';
 import {
   GetTaskQueryHandler,
@@ -17,13 +18,23 @@ import {
   TaskCreatedHandler,
   TaskUpdatedHandler,
   TaskStatusChangedHandler,
+  TaskDeletedHandler,
 } from './application/handlers/TaskEventHandlers';
 import { TaskController } from './interfaces/http/TaskController';
 import { TaskRepositoryModule } from './infrastructure/persistence/TaskRepositoryModule';
 
-const CommandHandlers = [CreateTaskCommandHandler, UpdateTaskCommandHandler];
+const CommandHandlers = [
+  CreateTaskCommandHandler,
+  UpdateTaskCommandHandler,
+  DeleteTaskCommandHandler,
+];
 const QueryHandlers = [GetTaskQueryHandler, ListTasksQueryHandler];
-const EventHandlers = [TaskCreatedHandler, TaskUpdatedHandler, TaskStatusChangedHandler];
+const EventHandlers = [
+  TaskCreatedHandler,
+  TaskUpdatedHandler,
+  TaskStatusChangedHandler,
+  TaskDeletedHandler,
+];
 
 @Module({
   imports: [
@@ -33,6 +44,17 @@ const EventHandlers = [TaskCreatedHandler, TaskUpdatedHandler, TaskStatusChanged
     TaskRepositoryModule,
   ],
   controllers: [TaskController],
-  providers: [MessageBus, ...CommandHandlers, ...QueryHandlers, ...EventHandlers], // Remove TaskRepository from here
+  providers: [
+    {
+      provide: MessageBus,
+      useFactory: () => {
+        const messageBus = new MessageBus();
+        return messageBus;
+      },
+    },
+    ...CommandHandlers,
+    ...QueryHandlers,
+    ...EventHandlers,
+  ],
 })
 export class TaskModule {}
