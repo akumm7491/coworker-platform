@@ -10,7 +10,7 @@ export class TestUtils {
   static async getTestingModuleFixture<T>(
     moduleClass: Type<T>,
     imports: any[] = [],
-    providers: any[] = [],
+    providers: any[] = []
   ): Promise<{ module: TestingModule; fixture: T }> {
     const module = await Test.createTestingModule({
       imports,
