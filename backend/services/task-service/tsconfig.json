@@ -16,8 +16,8 @@
     "allowJs": true,
     "baseUrl": ".",
     "paths": {
-      "@backend/*": ["node_modules/@coworker/*"],
-      "@shared-kernel/*": ["../../packages/shared-kernel/src/*"]
+      "@coworker/shared-kernel": ["../../packages/shared-kernel/src/index.ts"],
+      "@coworker/shared-kernel/*": ["../../packages/shared-kernel/src/*"]
     }
   },
   "include": ["src/**/*"],

@@ -1,8 +1,8 @@
 import { Controller, Post, Body, UseGuards, Get, Req } from '@nestjs/common';
 import { UserService } from '../../application/services/UserService';
 import { AuthGuard } from '@nestjs/passport';
-import { Result } from '@shared-kernel/common/Result';
-import { IAuthToken } from '@shared-kernel/domain/auth/types/auth.types';
+import { Result } from '@coworker/shared-kernel';
+import { IAuthToken } from '@coworker/shared-kernel';
 
 @Controller('auth')
 export class AuthController {

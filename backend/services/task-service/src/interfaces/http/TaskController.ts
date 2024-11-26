@@ -9,7 +9,6 @@ import { ListTasksQuery } from '../../application/queries/ListTasksQuery';
 import { ValidationPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { TaskStatus, TaskPriority } from '../../domain/models/TaskStatus';
-import { TaskNotFoundError } from '../../domain/errors/TaskNotFoundError';
 
 @Controller('tasks')
 @ApiTags('Tasks')

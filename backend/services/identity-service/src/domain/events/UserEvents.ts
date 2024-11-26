@@ -5,6 +5,7 @@ export class UserCreatedEvent extends DomainEvent {
   constructor(
     public readonly userId: UserId,
     public readonly email: string,
+    public readonly roles: string[],
     public readonly timestamp: Date = new Date()
   ) {
     super('UserCreatedEvent', userId);
@@ -12,9 +13,9 @@ export class UserCreatedEvent extends DomainEvent {
 
   toJSON(): Record<string, unknown> {
     return {
-      ...super.toJSON(),
       userId: this.userId,
       email: this.email,
+      roles: this.roles,
       timestamp: this.timestamp,
     };
   }
@@ -30,7 +31,6 @@ export class UserPasswordChangedEvent extends DomainEvent {
 
   toJSON(): Record<string, unknown> {
     return {
-      ...super.toJSON(),
       userId: this.userId,
       timestamp: this.timestamp,
     };
@@ -49,7 +49,6 @@ export class UserRolesUpdatedEvent extends DomainEvent {
 
   toJSON(): Record<string, unknown> {
     return {
-      ...super.toJSON(),
       userId: this.userId,
       oldRoles: this.oldRoles,
       newRoles: this.newRoles,
@@ -70,7 +69,6 @@ export class UserSocialProfileLinkedEvent extends DomainEvent {
 
   toJSON(): Record<string, unknown> {
     return {
-      ...super.toJSON(),
       userId: this.userId,
       provider: this.provider,
       providerUserId: this.providerUserId,
@@ -90,7 +88,6 @@ export class UserEmailVerifiedEvent extends DomainEvent {
 
   toJSON(): Record<string, unknown> {
     return {
-      ...super.toJSON(),
       userId: this.userId,
       email: this.email,
       timestamp: this.timestamp,
@@ -110,7 +107,6 @@ export class PasswordResetRequestedEvent extends DomainEvent {
 
   toJSON(): Record<string, unknown> {
     return {
-      ...super.toJSON(),
       userId: this.userId,
       email: this.email,
       resetToken: this.resetToken,

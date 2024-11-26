@@ -18,7 +18,7 @@ services:
   postgres:
     image: postgres:14-alpine
     ports:
-      - "5434:5432"  # Changed host port to 5434
+      - "5434:5432"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres

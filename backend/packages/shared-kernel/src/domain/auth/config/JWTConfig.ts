@@ -1,4 +1,4 @@
-import { InjectionToken } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 
 export interface JWTConfig {
   secret: string;
@@ -6,4 +6,5 @@ export interface JWTConfig {
   refreshTokenExpiresIn: string;
 }
 
-export const JWT_CONFIG = new InjectionToken<JWTConfig>('JWT_CONFIG');
+export const JWT_CONFIG = 'JWT_CONFIG';
+export const InjectJWTConfig = () => Inject(JWT_CONFIG);

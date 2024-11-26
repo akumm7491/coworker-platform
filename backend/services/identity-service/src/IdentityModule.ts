@@ -7,7 +7,7 @@ import { AuthController } from './infrastructure/controllers/AuthController';
 import { GoogleStrategy } from './infrastructure/auth/GoogleStrategy';
 import { GithubStrategy } from './infrastructure/auth/GithubStrategy';
 import { JwtStrategy } from './infrastructure/auth/JwtStrategy';
-import { JWTService } from '@shared-kernel/domain/auth/services/JWTService';
+import { JWTService } from '@coworker/shared-kernel';
 import { PasswordHashingService } from './application/services/PasswordHashingService';
 
 @Module({

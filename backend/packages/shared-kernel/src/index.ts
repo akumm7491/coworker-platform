@@ -5,6 +5,7 @@ export * from './domain/base/ValueObject';
 export * from './domain/events/DomainEvent';
 export * from './domain/events/EventBus';
 export * from './domain/repositories/DomainRepository';
+export * from './domain/auth';
 
 // Infrastructure exports
 export * from './infrastructure/cache/RedisCache';

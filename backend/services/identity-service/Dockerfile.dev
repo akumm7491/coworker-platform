@@ -1,16 +1,49 @@
-FROM node:18-alpine
+# Build stage for shared kernel
+FROM node:20-alpine
+WORKDIR /app
 
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+# Build shared kernel first
+WORKDIR /app/backend/packages/shared-kernel
+COPY backend/packages/shared-kernel/package*.json ./
+COPY backend/packages/shared-kernel/tsconfig.json ./
+COPY backend/packages/shared-kernel/src ./src
+
+# Install dependencies, build and pack
+RUN npm install
+RUN npm run build
+RUN npm pack
+
+# Build identity service
 WORKDIR /app/backend/services/identity-service
 
-# Install dependencies
-COPY package*.json ./
+# Copy the shared kernel build
+COPY --from=shared-kernel-builder /app/backend/packages/shared-kernel/coworker-shared-kernel-*.tgz ./
+
+# Copy identity service files
+COPY backend/services/identity-service/package*.json ./
+
+# Remove @coworker/shared-kernel from package.json dependencies temporarily
+RUN sed -i 's/"@coworker\/shared-kernel": ".*",//' package.json
+# Install dependencies excluding shared-kernel
 RUN npm install
 
+# Install shared-kernel from local tarball
+RUN npm install ../coworker-shared-kernel-*.tgz
+RUN npm install -g ts-node-dev
+
 # Copy source code
-COPY . .
+COPY backend/services/identity-service/tsconfig.json ./
+COPY backend/services/identity-service/src ./src
+
+# Set environment variables
+ENV NODE_ENV=development
+ENV PORT=3456
 
 # Expose the port the app runs on
-EXPOSE 3458
+EXPOSE 3456
 
-# Command to run the application in development mode
-CMD ["npm", "run", "dev"]
+# Start the app in development mode
+CMD ["npm", "run", "start:dev"]

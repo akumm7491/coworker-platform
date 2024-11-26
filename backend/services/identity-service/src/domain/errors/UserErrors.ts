@@ -1,4 +1,4 @@
-import { DomainError } from '@shared-kernel/domain/errors/DomainError';
+import { DomainError } from '@coworker/shared-kernel';
 
 export class UserAlreadyExistsError extends DomainError {
   constructor(email: string) {

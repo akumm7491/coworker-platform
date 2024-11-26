@@ -9,7 +9,7 @@
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
+    "baseUrl": "./src",
     "incremental": true,
     "skipLibCheck": true,
     "strict": true,
@@ -22,10 +22,10 @@
     "composite": true,
     "lib": ["ES2021", "DOM"],
     "paths": {
-      "@domain/*": ["src/domain/*"],
-      "@infrastructure/*": ["src/infrastructure/*"],
-      "@common/*": ["src/common/*"],
-      "@examples/*": ["src/examples/*"]
+      "@domain/*": ["domain/*"],
+      "@infrastructure/*": ["infrastructure/*"],
+      "@common/*": ["common/*"],
+      "@examples/*": ["examples/*"]
     }
   },
   "include": ["src/**/*"],

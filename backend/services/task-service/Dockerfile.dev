@@ -26,6 +26,7 @@ RUN sed -i 's/"@coworker\/shared-kernel": ".*",//' package.json
 RUN npm install
 # Install shared-kernel from local tarball
 RUN npm install ../coworker-shared-kernel-*.tgz
+RUN npm install -g ts-node-dev
 
 # Copy source code
 COPY backend/services/task-service/tsconfig.json ./

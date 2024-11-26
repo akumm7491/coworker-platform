@@ -1,130 +1,118 @@
-import { AggregateRoot } from '@coworker/shared-kernel';
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { ApiProperty } from '@nestjs/swagger';
+import * as crypto from 'crypto';
+import { PasswordHashingService } from '../../application/services/PasswordHashingService';
 import {
   UserCreatedEvent,
   UserPasswordChangedEvent,
   UserRolesUpdatedEvent,
 } from '../events/UserEvents';
-import { PasswordHashingService } from '../../application/services/PasswordHashingService';
-import { AuthenticationError } from '@coworker/shared-kernel/src/domain/auth';
+import { AuthenticationError } from '@coworker/shared-kernel';
 
 export type UserId = string;
 
-export interface UserProps {
+@Entity()
+export class User {
+  @PrimaryGeneratedColumn('uuid')
+  @ApiProperty({ description: 'The unique identifier of the user' })
   id: UserId;
+
+  @Column({ unique: true })
+  @ApiProperty({ description: 'The email address of the user' })
   email: string;
-  passwordHash?: string;
-  firstName?: string;
-  lastName?: string;
+
+  @Column()
+  @ApiProperty({ description: 'The first name of the user' })
+  firstName: string;
+
+  @Column()
+  @ApiProperty({ description: 'The last name of the user' })
+  lastName: string;
+
+  @Column()
+  private hashedPassword: string;
+
+  @Column('simple-array')
+  @ApiProperty({ description: 'The roles assigned to the user' })
   roles: string[];
+
+  @Column('simple-array')
+  @ApiProperty({ description: 'The permissions assigned to the user' })
+  permissions: string[] = [];
+
+  @Column({ default: false })
+  @ApiProperty({ description: 'Whether the user email is verified' })
   isEmailVerified: boolean;
-  socialProfiles?: {
-    google?: { id: string; email: string };
-    github?: { id: string; email: string };
-  };
-  metadata: Record<string, any>;
-}
 
-export class User extends AggregateRoot {
-  private readonly props: UserProps;
-
-  private constructor(props: UserProps) {
-    super(props.id);
-    this.props = props;
+  constructor(
+    id: UserId | undefined,
+    email: string,
+    hashedPassword: string,
+    firstName: string,
+    lastName: string,
+    roles: string[] = ['user'],
+    permissions: string[] = [],
+    isEmailVerified = false
+  ) {
+    this.id = id || crypto.randomUUID();
+    this.email = email;
+    this.hashedPassword = hashedPassword;
+    this.firstName = firstName;
+    this.lastName = lastName;
+    this.roles = roles;
+    this.permissions = permissions;
+    this.isEmailVerified = isEmailVerified;
   }
 
-  public static create(props: Omit<UserProps, 'id' | 'roles' | 'isEmailVerified'>): User {
-    const user = new User({
-      ...props,
-      id: crypto.randomUUID(),
-      roles: ['user'],
-      isEmailVerified: false,
-      metadata: props.metadata || {},
-    });
-
-    user.addDomainEvent(new UserCreatedEvent(user.id, user.email));
-    return user;
+  get password(): string {
+    return this.hashedPassword;
   }
 
-  public static createWithSocialProfile(
-    provider: 'google' | 'github',
-    profile: { id: string; email: string; firstName?: string; lastName?: string }
-  ): User {
-    const user = new User({
-      id: crypto.randomUUID(),
-      email: profile.email,
-      firstName: profile.firstName,
-      lastName: profile.lastName,
-      roles: ['user'],
-      isEmailVerified: true,
-      socialProfiles: {
-        [provider]: { id: profile.id, email: profile.email },
-      },
-      metadata: {},
-    });
-
-    user.addDomainEvent(new UserCreatedEvent(user.id, user.email));
-    return user;
+  getEmail(): string {
+    return this.email;
   }
 
-  public async setPassword(
-    password: string,
-    passwordHashingService: PasswordHashingService
-  ): Promise<void> {
-    this.props.passwordHash = await passwordHashingService.hash(password);
-    this.addDomainEvent(new UserPasswordChangedEvent(this.id));
+  getRoles(): string[] {
+    return [...this.roles];
   }
 
-  public async validatePassword(
-    password: string,
-    passwordHashingService: PasswordHashingService
-  ): Promise<boolean> {
-    if (!this.props.passwordHash) {
-      throw new AuthenticationError('No password set for this user');
+  hasRole(role: string): boolean {
+    return this.roles.includes(role);
+  }
+
+  async verifyPassword(plainPassword: string, passwordHashingService: PasswordHashingService): Promise<void> {
+    const isValid = await passwordHashingService.compare(plainPassword, this.hashedPassword);
+    if (!isValid) {
+      throw new AuthenticationError('Invalid password');
     }
-    return passwordHashingService.compare(password, this.props.passwordHash);
   }
 
-  public updateRoles(roles: string[]): void {
-    const oldRoles = [...this.props.roles];
-    this.props.roles = roles;
-    this.addDomainEvent(new UserRolesUpdatedEvent(this.id, oldRoles, roles));
+  async changePassword(newPassword: string, passwordHashingService: PasswordHashingService): Promise<UserPasswordChangedEvent> {
+    this.hashedPassword = await passwordHashingService.hash(newPassword);
+    return new UserPasswordChangedEvent(this.id);
   }
 
-  public linkSocialProfile(
-    provider: 'google' | 'github',
-    profile: { id: string; email: string }
-  ): void {
-    this.props.socialProfiles = {
-      ...this.props.socialProfiles,
-      [provider]: profile,
-    };
+  updatePassword(newHashedPassword: string): UserPasswordChangedEvent {
+    this.hashedPassword = newHashedPassword;
+    return new UserPasswordChangedEvent(this.id);
   }
 
-  get id(): string {
-    return this.props.id;
+  updateRoles(newRoles: string[]): UserRolesUpdatedEvent {
+    const oldRoles = [...this.roles];
+    this.roles = [...newRoles];
+    return new UserRolesUpdatedEvent(this.id, oldRoles, newRoles);
   }
 
-  get email(): string {
-    return this.props.email;
-  }
-
-  get roles(): string[] {
-    return [...this.props.roles];
-  }
-
-  get isEmailVerified(): boolean {
-    return this.props.isEmailVerified;
-  }
-
-  get socialProfiles() {
-    return this.props.socialProfiles ? { ...this.props.socialProfiles } : undefined;
-  }
-
-  get metadata(): Record<string, any> {
-    return { ...this.props.metadata };
-  }
-
-  toJSON(): UserProps {
-    return { ...this.props };
+  static async create(
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    passwordHashingService: PasswordHashingService
+  ): Promise<[User, UserCreatedEvent]> {
+    const hashedPassword = await passwordHashingService.hash(password);
+    const user = new User(undefined, email, hashedPassword, firstName, lastName, ['user']);
+    const event = new UserCreatedEvent(user.id, email, user.roles);
+    return [user, event];
   }
 }

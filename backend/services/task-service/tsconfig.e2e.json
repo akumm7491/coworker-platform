@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node"],
+    "paths": {
+      "@coworker/shared-kernel/*": ["../../../packages/shared-kernel/src/*"],
+      "@coworker/shared-kernel": ["../../../packages/shared-kernel/src"]
+    }
+  },
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
