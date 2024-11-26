@@ -1,15 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { JWTService, Result, IAuthToken, AuthenticationError } from '@coworker/shared-kernel';
-import { User, UserId } from '../../domain/models/User';
+import { Injectable, Inject } from '@nestjs/common';
+import { JWTService } from '@coworker/shared-kernel';
+import { User } from '../../domain/models/User';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
 import { PasswordHashingService } from './PasswordHashingService';
-import {
-  UserAlreadyExistsError,
-  InvalidCredentialsError,
-  UserNotFoundError,
-} from '../../domain/errors/UserErrors';
-import * as crypto from 'crypto';
+import { Result } from '@coworker/shared-kernel';
 import { IEventBus } from '@coworker/shared-kernel';
+import { USER_REPOSITORY } from '../../domain/repositories/tokens';
+import { UserAlreadyExistsError, UserNotFoundError } from '../../domain/errors/UserErrors';
+import { IAuthToken, IAuthUser } from '@coworker/shared-kernel';
+import * as crypto from 'crypto';
 
 interface RegisterUserDTO {
   email: string;
@@ -18,22 +17,18 @@ interface RegisterUserDTO {
   lastName: string;
 }
 
-interface LoginDTO {
-  email: string;
-  password: string;
-}
-
-interface SocialLoginDTO {
+interface SocialProfile {
   provider: 'google' | 'github';
-  profileId: string;
+  id: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 @Injectable()
 export class UserService {
   constructor(
+    @Inject(USER_REPOSITORY)
     private readonly userRepository: IUserRepository,
     private readonly jwtService: JWTService,
     private readonly passwordHashingService: PasswordHashingService,
@@ -57,78 +52,25 @@ export class UserService {
     await this.userRepository.save(user);
     await this.eventBus.publish(event);
 
-    const tokens = await this.jwtService.generateTokens({
+    const authUser: IAuthUser = {
       id: user.id,
       email: user.getEmail(),
       roles: user.getRoles(),
-      permissions: user.permissions,
+      permissions: user.getPermissions(),
       metadata: {},
-    });
+    };
 
-    return tokens.isOk()
-      ? tokens
-      : Result.fail(new AuthenticationError('Failed to generate tokens'));
+    const token: IAuthToken = {
+      accessToken: (await this.jwtService.generateTokens(authUser)).getValue().accessToken,
+      refreshToken: crypto.randomBytes(32).toString('hex'),
+      expiresIn: 3600,
+      tokenType: 'Bearer',
+    };
+
+    return Result.ok(token);
   }
 
-  async login(dto: LoginDTO): Promise<Result<IAuthToken>> {
-    const user = await this.userRepository.findByEmail(dto.email);
-    if (!user) {
-      return Result.fail(new InvalidCredentialsError());
-    }
-
-    try {
-      await user.verifyPassword(dto.password, this.passwordHashingService);
-    } catch (error) {
-      return Result.fail(new InvalidCredentialsError());
-    }
-
-    const tokens = await this.jwtService.generateTokens({
-      id: user.id,
-      email: user.getEmail(),
-      roles: user.getRoles(),
-      permissions: user.permissions,
-      metadata: {},
-    });
-
-    return tokens.isOk()
-      ? tokens
-      : Result.fail(new AuthenticationError('Failed to generate tokens'));
-  }
-
-  async socialLogin(dto: SocialLoginDTO): Promise<Result<IAuthToken>> {
-    let user = await this.userRepository.findByEmail(dto.email);
-
-    if (!user) {
-      const [newUser, event] = await User.create(
-        dto.email,
-        crypto.randomBytes(32).toString('hex'), // Generate a random password for social login
-        dto.firstName,
-        dto.lastName,
-        this.passwordHashingService
-      );
-
-      user = newUser;
-      await this.userRepository.save(user);
-      await this.eventBus.publish(event);
-    }
-
-    const tokens = await this.jwtService.generateTokens({
-      id: user.id,
-      email: user.getEmail(),
-      roles: user.getRoles(),
-      permissions: user.permissions,
-      metadata: {
-        provider: dto.provider,
-        profileId: dto.profileId,
-      },
-    });
-
-    return tokens.isOk()
-      ? tokens
-      : Result.fail(new AuthenticationError('Failed to generate tokens'));
-  }
-
-  async findById(id: UserId): Promise<Result<User>> {
+  async findById(id: string): Promise<Result<User>> {
     const user = await this.userRepository.findById(id);
     if (!user) {
       return Result.fail(new UserNotFoundError(id));
@@ -136,31 +78,47 @@ export class UserService {
     return Result.ok(user);
   }
 
-  async validateToken(token: string): Promise<Result<any>> {
-    try {
-      const result = await this.jwtService.validateToken(token);
-      return result.isOk() ? result : Result.fail(new AuthenticationError('Invalid token'));
-    } catch (error) {
-      return Result.fail(new AuthenticationError('Invalid token'));
-    }
-  }
-
-  async resetPassword(userId: UserId, newPassword: string): Promise<Result<void>> {
-    const userResult = await this.findById(userId);
-    if (userResult.isFail()) {
-      return Result.fail(userResult.getError());
+  async resetPassword(email: string): Promise<Result<void>> {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) {
+      return Result.fail(new UserNotFoundError(email));
     }
 
-    const user = userResult.getValue();
+    const newPassword = crypto.randomBytes(8).toString('hex');
     const event = await user.changePassword(newPassword, this.passwordHashingService);
 
     await this.userRepository.save(user);
     await this.eventBus.publish(event);
+
     return Result.ok(void 0);
   }
 
-  async getUserById(id: string): Promise<User | null> {
-    const userResult = await this.findById(id);
-    return userResult.isOk() ? userResult.getValue() : null;
+  async getUserById(id: string): Promise<Result<User>> {
+    return this.findById(id);
+  }
+
+  async findOrCreateSocialUser(profile: SocialProfile): Promise<User> {
+    let user = await this.userRepository.findBySocialProfile(profile.provider, profile.id);
+
+    if (!user) {
+      user = await this.userRepository.findByEmail(profile.email);
+    }
+
+    if (!user) {
+      const [newUser, event] = await User.create(
+        profile.email,
+        crypto.randomBytes(32).toString('hex'),
+        profile.firstName || '',
+        profile.lastName || '',
+        this.passwordHashingService
+      );
+
+      await this.userRepository.save(newUser);
+      await this.eventBus.publish(event);
+
+      user = newUser;
+    }
+
+    return user;
   }
 }

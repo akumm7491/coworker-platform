@@ -1,24 +1,22 @@
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { AuthController } from './AuthController';
 import { AuthService } from './AuthService';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../domain/models/User';
 import { UserModule } from '../UserModule';
+import { AuthModule as SharedAuthModule } from '@coworker/shared-kernel';
 
 @Module({
   imports: [
     PassportModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '1h' },
-      }),
-      inject: [ConfigService],
+    SharedAuthModule.register({
+      jwt: {
+        secret: process.env.JWT_SECRET || 'your-secret-key',
+        accessTokenExpiresIn: '1h',
+        refreshTokenExpiresIn: '7d',
+      },
     }),
     TypeOrmModule.forFeature([User]),
     UserModule,

@@ -76,6 +76,10 @@ export class User {
     return [...this.roles];
   }
 
+  getPermissions(): string[] {
+    return this.permissions;
+  }
+
   hasRole(role: string): boolean {
     return this.roles.includes(role);
   }
